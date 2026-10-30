@@ -16,6 +16,11 @@ class SpeedIn(BaseModel):
     mode: Literal["fast", "slow"]
 
 
+class DriveIn(BaseModel):
+    vx: float = Field(..., ge=-1, le=1, description="전진량 (+전진 / -후진)")
+    wz: float = Field(0.0, ge=-1, le=1, description="회전량 (+좌회전 / -우회전)")
+
+
 class LookIn(BaseModel):
     pan: float | None = Field(None, ge=0, le=180)
     tilt: float | None = Field(None, ge=0, le=180)
@@ -29,6 +34,13 @@ def move(direction: Literal["forward", "backward", "left", "right", "stop"],
     else:
         robot.gait.move(direction)
     return robot.status()
+
+
+@router.put("/motion/drive")
+def drive(body: DriveIn, robot: Robot = Depends(get_robot)):
+    """조이스틱처럼 전진량·회전량을 연속값으로 지정 (곡선 보행)."""
+    robot.gait.drive(body.vx, body.wz)
+    return robot.gait.snapshot()
 
 
 @router.post("/stand")

@@ -65,8 +65,8 @@ select { padding: 8px; border-radius: 8px; border: 1px solid var(--line); backgr
 .jl.l { left: 7px; top: 50%; transform: translateY(-50%); }
 .jl.r { right: 7px; top: 50%; transform: translateY(-50%); }
 .joy[data-dir] .jl { opacity: .35; }
-.joy[data-dir="forward"] .jl.t, .joy[data-dir="backward"] .jl.b,
-.joy[data-dir="left"] .jl.l, .joy[data-dir="right"] .jl.r { opacity: 1; color: var(--accent); font-weight: 700; }
+.joy[data-dir^="forward"] .jl.t, .joy[data-dir^="backward"] .jl.b,
+.joy[data-dir$="left"] .jl.l, .joy[data-dir$="right"] .jl.r { opacity: 1; color: var(--accent); font-weight: 700; }
 .joy-label { font-size: 13px; font-weight: 600; } .joy-label small { color: var(--muted); font-weight: 400; }
 
 .video-card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; min-width: 0; }

@@ -58,20 +58,39 @@
     el.addEventListener("lostpointercapture", end);
   }
 
-  // 이동: 가장 큰 축으로 4방향 결정 (헥사포드 보행은 4방향)
-  let moveDir = null;
-  function setMove(dir) {
-    if (dir === moveDir) return;
-    moveDir = dir;
-    $("moveJoy").dataset.dir = dir || "";
-    if (!dir) delete $("moveJoy").dataset.dir;
-    send(dir || "DS");
-    buzz(dir ? 12 : 6);
+  // 이동: 아날로그 주행 — 위아래 = 전진량(vx), 좌우 = 회전량(wz, +좌회전)
+  //   앞으로 밀면서 살짝 옆으로 기울이면 곡선 보행, 조금만 밀면 천천히 걷기
+  // 원형 데드존: 기울인 '거리'로 크기를, '방향'으로 전진·회전 비율을 정함
+  //   → 앞으로 밀면서 옆으로 조금만 기울여도 그 비율만큼 회전이 섞임
+  const DEADZONE = 0.12;
+  function joyToDrive(x, y) {
+    const m = Math.min(1, Math.hypot(x, y));
+    if (m < DEADZONE) return [0, 0];
+    const t = (m - DEADZONE) / (1 - DEADZONE);
+    const scale = (0.7 * t + 0.3 * t * t * t) / m;   // 중앙 부근을 약간 더 세밀하게
+    return [y * scale, -x * scale];                   // vx = 위, wz = 왼쪽(+)
   }
-  joystick($("moveJoy"), (x, y) => {
-    if (Math.hypot(x, y) < 0.35) return setMove(null);
-    setMove(Math.abs(y) >= Math.abs(x) ? (y > 0 ? "forward" : "backward") : (x > 0 ? "right" : "left"));
-  }, () => setMove(null));
+  let drive = [0, 0], driveTimer = null, driveSent = "", lastDir = "";
+  function flushDrive() {
+    const msg = `drive ${drive[0].toFixed(2)} ${drive[1].toFixed(2)}`;
+    if (msg !== driveSent) { send(msg); driveSent = msg; }
+  }
+  function moveLabel(vx, wz) {
+    if (!vx && !wz) return "";
+    if (Math.abs(vx) >= Math.abs(wz) * 2) return vx > 0 ? "forward" : "backward";
+    if (Math.abs(wz) >= Math.abs(vx) * 2) return wz > 0 ? "left" : "right";
+    return `${vx > 0 ? "forward" : "backward"}-${wz > 0 ? "left" : "right"}`;
+  }
+  function setDrive(vx, wz) {
+    drive = [vx, wz];
+    const label = moveLabel(vx, wz);
+    const joy = $("moveJoy");
+    if (label) joy.dataset.dir = label; else delete joy.dataset.dir;
+    if (label !== lastDir) { buzz(label ? 10 : 6); lastDir = label; }
+    if (!vx && !wz) { clearInterval(driveTimer); driveTimer = null; flushDrive(); return; }
+    if (!driveTimer) { flushDrive(); driveTimer = setInterval(flushDrive, 66); }   // 초당 최대 15회
+  }
+  joystick($("moveJoy"), (x, y) => setDrive(...joyToDrive(x, y)), () => setDrive(0, 0));
 
   // 카메라: 기울인 만큼 속도 비례 (초당 최대 15회 전송)
   let camVel = [0, 0], camTimer = null, camSent = "";
@@ -100,13 +119,19 @@
   });
 
   $("stopBtn").onclick = () => {
-    setMove(null); send("DS"); send("headvel 0 0"); send("sonarstop"); buzz(30);
+    setDrive(0, 0); send("DS"); send("headvel 0 0"); send("sonarstop"); buzz(30);
   };
   $("speedBtn").onclick = () => send(state && state.speed_mode === "fast" ? "slow" : "fast");
   $("scanBtn").onclick = () => { send("sonarscan"); buzz(); };
 
   // ================================================================ 키보드 (PC)
-  const moveKeys = { w: "forward", s: "backward", a: "left", d: "right" };
+  const moveKeys = { w: 1, s: 1, a: 1, d: 1 };
+  function driveFromKeys() {
+    const on = (k) => (keysDown.has(k) ? 1 : 0);
+    const vx = on("w") - on("s");
+    const wz = (on("a") - on("d")) * (vx ? 0.5 : 1);   // 전진 중 회전은 완만한 곡선
+    setDrive(vx, wz);
+  }
   const camKeys = { i: [0, 1], k: [0, -1], j: [1, 0], l: [-1, 0] };
   const keysDown = new Set();
   function camFromKeys() {
@@ -117,7 +142,7 @@
   addEventListener("keydown", (e) => {
     if (e.repeat || e.target.tagName === "SELECT" || e.ctrlKey || e.metaKey) return;
     const k = e.key.toLowerCase();
-    if (moveKeys[k]) { keysDown.add(k); setMove(moveKeys[k]); }
+    if (moveKeys[k]) { keysDown.add(k); driveFromKeys(); }
     else if (camKeys[k]) { keysDown.add(k); camFromKeys(); }
     else if (k === "q" || k === "e") { const b = document.querySelector(`[data-key="${k}"]`); if (b) press(b); }
     else if (k === " ") { e.preventDefault(); $("stopBtn").click(); }
@@ -125,16 +150,14 @@
   addEventListener("keyup", (e) => {
     const k = e.key.toLowerCase();
     keysDown.delete(k);
-    if (moveKeys[k]) {
-      const still = [...keysDown].find((x) => moveKeys[x]);
-      setMove(still ? moveKeys[still] : null);
-    } else if (camKeys[k]) camFromKeys();
+    if (moveKeys[k]) driveFromKeys();
+    else if (camKeys[k]) camFromKeys();
     else if (k === "q" || k === "e") { const b = document.querySelector(`[data-key="${k}"]`); if (b) release(b); }
   });
 
   // 화면을 벗어나면 모두 정지 (앱 전환, 탭 이동, 화면 꺼짐)
   function stopAll() {
-    keysDown.clear(); held.forEach(release); setMove(null);
+    keysDown.clear(); held.forEach(release); setDrive(0, 0);
     clearInterval(camTimer); camTimer = null; camVel = [0, 0]; flushCam();
   }
   addEventListener("blur", stopAll);
@@ -255,7 +278,7 @@
     $("scanBtn").textContent = so.scanning ? "스캔 중…" : "부채꼴 스캔";
     drawRadar(so);
 
-    $("hudMove").textContent = { forward: "전진", backward: "후진", left: "좌회전", right: "우회전" }[s.moving] || "정지";
+    $("hudMove").textContent = driveText(s.drive);
     $("hudSpeed").textContent = s.speed_mode === "fast" ? "FAST" : "SLOW";
     $("speedBtn").textContent = s.speed_mode === "fast" ? "FAST" : "SLOW";
     $("speedBtn").classList.toggle("active", s.speed_mode === "fast");
@@ -274,6 +297,15 @@
     $("oledTxt").textContent = (oled.lines || []).join("\n") + (oled.available ? "" : "\n(OLED 미연결 · 미리보기)");
 
     if (calib.open) renderServos(s);
+  }
+
+  function driveText(d) {
+    if (!d || (!d.vx && !d.wz)) return "정지";
+    const pct = (v) => `${Math.round(Math.abs(v) * 100)}%`;
+    const parts = [];
+    if (d.vx) parts.push(`${d.vx > 0 ? "전진" : "후진"} ${pct(d.vx)}`);
+    if (d.wz) parts.push(`${d.wz > 0 ? "좌" : "우"} ${pct(d.wz)}`);
+    return parts.join(" · ");
   }
 
   function renderServos(s) {

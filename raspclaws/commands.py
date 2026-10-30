@@ -62,6 +62,12 @@ def _right(r: Robot, _):
     r.gait.move("right")
 
 
+@command("drive")
+def _drive(r: Robot, args):
+    """아날로그 주행: drive <전진량 -1~1> <회전량 -1~1, +좌회전>"""
+    r.gait.drive(float(args[0]), float(args[1]))
+
+
 @command("DS", "TS", "stop")
 def _stop(r: Robot, _):
     r.gait.stop()

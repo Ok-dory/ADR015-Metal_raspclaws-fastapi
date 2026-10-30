@@ -90,6 +90,7 @@ class Robot:
         return {
             **self.status(),
             **system_info.snapshot(),
+            "drive": self.gait.snapshot(),
             "battery": self.battery.snapshot(),
             "head": self.head.snapshot(),
             "sonar": self.sonar.snapshot(),

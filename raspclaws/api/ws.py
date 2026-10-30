@@ -18,7 +18,7 @@ log = logging.getLogger(__name__)
 router = APIRouter()
 
 # 조이스틱처럼 초당 수십 번 오는 명령은 ack 를 생략해 트래픽을 줄임
-SILENT = {"headvel", "look", "sonar"}
+SILENT = {"drive", "headvel", "look", "sonar"}
 
 
 @router.websocket("/ws")

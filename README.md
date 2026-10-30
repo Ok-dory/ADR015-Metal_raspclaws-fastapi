@@ -97,8 +97,11 @@ PC에서 하드웨어 없이 개발할 때는 `RASPCLAWS_BACKEND=mock python run
 
 ## 웹 조작
 
-- **PC**: W A S D 이동, I J K L 카메라, Q / E 초음파 회전, Space 전체 정지
+- **PC**: W/S 전진·후진, A/D 회전(W+A 곡선), I J K L 카메라, Q / E 초음파 회전, Space 전체 정지
 - **스마트폰**: 왼쪽 조이스틱 이동, 오른쪽 조이스틱 카메라(기울인 만큼 빠르게), 영상 탭 → 그 지점 조준
+- **아날로그 주행**: 이동 조이스틱은 위아래 = 전진·후진량, 좌우 = 회전량입니다.
+  앞으로 밀면서 옆으로 살짝 기울이면 그 비율만큼 곡선으로 걷고, 조금만 밀면 보폭과 걸음 속도가 함께 줄어 천천히 걷습니다.
+  PC에서는 W+A / W+D 를 함께 누르면 완만한 곡선 보행이 됩니다.
 - 가로로 눕히면 조종석 모드(조이스틱 | 영상 | 조이스틱)로 바뀌고, ⛶ 버튼으로 전체화면
 - 크롬 메뉴의 "홈 화면에 추가"로 앱처럼 실행 가능, 조작 중에는 화면 꺼짐 방지
 - 서보 영점 설정은 기본으로 접혀 있으며 펼침 상태를 기억합니다
@@ -113,6 +116,7 @@ PC에서 하드웨어 없이 개발할 때는 `RASPCLAWS_BACKEND=mock python run
 | POST | `/api/calibration/{ch}/nudge` | `{"delta": ±n}` 영점 미세조정 |
 | POST | `/api/calibration/save` · `/reset` | 영점 저장 · 초기화 |
 | POST | `/api/motion/{forward\|backward\|left\|right\|stop}` | 보행 |
+| PUT | `/api/motion/drive` | `{"vx": -1~1, "wz": -1~1}` 아날로그 주행 (wz + = 좌회전) |
 | PUT | `/api/motion/speed` | `{"mode": "fast"\|"slow"}` |
 | PUT | `/api/head` | `{"pan": .., "tilt": ..}` |
 | GET | `/api/status` | 보행 상태 + CPU/RAM |

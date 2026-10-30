@@ -9,7 +9,8 @@ Adeept RaspClaws-Metal(Raspberry Pi 5 + Robot HAT V3.3)용 커스텀 제어 서�
 raspclaws-fastapi/
 ├─ run.py                     # 실행 진입점 (uvicorn, 0.0.0.0:5000)
 ├─ requirements.txt
-├─ raspclaws.service          # systemd 자동 실행용
+├─ update.sh                  # GitHub 최신 코드 받기 + 재시작
+├─ scripts/install-service.sh # 부팅 시 자동 실행 등록
 ├─ data/servos_init.json      # 영점 캘리브레이션 (SAVE 시 생성)
 └─ raspclaws/
    ├─ config.py               # 설정 (환경변수 RASPCLAWS_* 로 덮어쓰기)
@@ -29,27 +30,37 @@ raspclaws-fastapi/
 계층은 `API → Robot → (Gait/Head) → ServoController → PWMBackend` 한 방향으로만 의존합니다.
 나중에 앱 서버(8888), PC GUI, 비전 모듈을 붙일 때도 `Robot` 객체만 넘겨 주시면 됩니다.
 
-## 설치 (Raspberry Pi)
+## 설치 (Raspberry Pi, 처음 한 번)
 
 ```bash
-# 1) 기존 Adeept 서버가 I2C·포트를 점유하지 않도록 중지
-sudo killall python3          # 자동 실행 설정(crontab/rc.local/systemd)도 확인해 주세요
+# 1) 원본 Adeept 서버 끄기 (서보·포트 충돌 방지)
+sudo systemctl disable --now Adeept_Robot.service
 
-# 2) 가상환경 (Bookworm 은 시스템 pip 설치가 막혀 있음)
+# 2) 저장소 받기 (비공개 저장소는 먼저 gh auth login)
+git clone https://github.com/Ok-dory/ADR015-Metal_raspclaws-fastapi.git ~/raspclaws-fastapi
 cd ~/raspclaws-fastapi
-python3 -m venv --system-site-packages .venv
-.venv/bin/pip install -r requirements.txt
 
-# 3) 실행
+# 3) 가상환경·패키지 설치
+./update.sh
+
+# 4) 실행 (수동) 또는 부팅 시 자동 실행 등록
 .venv/bin/python run.py
-# 브라우저: http://192.168.1.48:5000   API 문서: http://192.168.1.48:5000/docs
+./scripts/install-service.sh
 ```
+브라우저: http://192.168.1.48:5000 · API 문서: http://192.168.1.48:5000/docs
+
+## 업데이트 (작업 흐름)
+
+코드 수정은 Claude 가 이 저장소에 커밋·푸시하고, 로봇에서는 아래 한 줄로 반영합니다.
+
+```bash
+cd ~/raspclaws-fastapi && ./update.sh
+```
+`git pull` → (requirements.txt 가 바뀐 경우만) 패키지 설치 → 서비스 재시작까지 자동으로 합니다.
+로봇에서 직접 수정한 파일이 있으면 덮어쓰지 않고 중단하니, 안내에 따라 버리거나 커밋해 주세요.
 
 PC에서 하드웨어 없이 개발할 때는 `RASPCLAWS_BACKEND=mock python run.py` 로 실행하시면 됩니다
 (`auto` 기본값은 PCA9685 초기화 실패 시 자동으로 mock 으로 전환).
-
-자동 실행: `raspclaws.service` 의 `User`/경로를 수정한 뒤
-`sudo cp raspclaws.service /etc/systemd/system/ && sudo systemctl enable --now raspclaws`
 
 ## 첫 실행 시 꼭 해 주실 일
 

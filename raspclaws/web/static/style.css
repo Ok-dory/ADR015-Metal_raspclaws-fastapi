@@ -1,0 +1,176 @@
+:root {
+  --bg: #f3f4f6; --card: #ffffff; --text: #1d2129; --muted: #6b7280;
+  --line: #e3e5ea; --accent: #2563eb; --danger: #dc2626; --ok: #16a34a; --warn: #d97706;
+  --btn: #eef0f4; --btn-active: #2563eb; --btn-active-text: #fff;
+  --joy-bg: #e8ebf0; --joy-ring: #cfd5df; --knob: #2563eb;
+  --radar-bg: #0f1a14; --radar-line: #1f5133; --radar-beam: #34d399; --radar-fill: rgba(52,211,153,.18);
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0f1115; --card: #181b22; --text: #e6e8ec; --muted: #8b93a1;
+    --line: #2a2f3a; --btn: #242933; --joy-bg: #1f232c; --joy-ring: #343b48;
+  }
+}
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body { overscroll-behavior: none; }
+body { margin: 0; background: var(--bg); color: var(--text); touch-action: manipulation;
+  font: 15px/1.45 system-ui, -apple-system, "Noto Sans KR", sans-serif; }
+header { display: flex; justify-content: space-between; align-items: center; gap: 8px;
+  padding: 10px 16px; padding-top: max(10px, env(safe-area-inset-top));
+  border-bottom: 1px solid var(--line); background: var(--card); position: sticky; top: 0; z-index: 5; }
+h1 { margin: 0; font-size: 17px; white-space: nowrap; } h1 span { color: var(--accent); }
+.chips { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; justify-content: flex-end; }
+.chip { font-size: 12px; color: var(--muted); background: var(--btn); border-radius: 999px;
+  padding: 4px 10px; display: inline-flex; gap: 6px; align-items: center; white-space: nowrap; }
+.chip b { color: var(--text); font-variant-numeric: tabular-nums; }
+.chip.warn b { color: var(--warn); } .chip.bad b { color: var(--danger); }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--danger); display: inline-block; }
+.dot.on { background: var(--ok); }
+
+main { display: grid; gap: 14px; padding: 14px; max-width: 1280px; margin: 0 auto;
+  grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 14px; min-width: 0; }
+.card.wide, #cockpit { grid-column: 1 / -1; }
+h2 { margin: 0 0 12px; font-size: 15px; } h2 small { color: var(--muted); font-weight: 400; margin-left: 6px; }
+
+button { border: 0; background: var(--btn); color: var(--text); border-radius: 10px;
+  padding: 9px 12px; font: inherit; cursor: pointer; user-select: none; -webkit-user-select: none;
+  touch-action: manipulation; min-height: 40px; }
+button:active, button.active { background: var(--btn-active); color: var(--btn-active-text); }
+button.primary { background: var(--accent); color: #fff; }
+button.danger { background: transparent; color: var(--danger); border: 1px solid var(--danger); }
+button.stop { background: var(--danger); color: #fff; font-weight: 700; }
+button.icon { min-height: 30px; padding: 2px 9px; font-size: 16px; }
+button.wide { width: 100%; margin-top: 10px; }
+.row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.spacer { flex: 1; }
+select { padding: 8px; border-radius: 8px; border: 1px solid var(--line); background: var(--card); color: var(--text); font: inherit; }
+.muted { color: var(--muted); font-size: 13px; }
+
+/* ---------------- 조종석 ---------------- */
+#cockpit { display: grid; gap: 14px; align-items: center;
+  grid-template-columns: 220px minmax(0, 1fr) 220px; }
+.joy-wrap { display: flex; flex-direction: column; align-items: center; gap: 8px; user-select: none; -webkit-user-select: none; }
+.joy { --size: 190px; width: var(--size); height: var(--size); border-radius: 50%; position: relative;
+  background: radial-gradient(circle, var(--joy-bg) 55%, var(--joy-ring) 56%, var(--joy-bg) 58%);
+  border: 2px solid var(--joy-ring); touch-action: none; cursor: grab; }
+.joy .knob { position: absolute; left: 50%; top: 50%; width: 38%; height: 38%; border-radius: 50%;
+  background: var(--knob); transform: translate(-50%, -50%); box-shadow: 0 4px 14px rgba(0,0,0,.25);
+  transition: transform .12s ease-out; pointer-events: none; }
+.joy.dragging .knob { transition: none; }
+.joy.dragging { cursor: grabbing; }
+.jl { position: absolute; font-size: 11px; color: var(--muted); pointer-events: none; }
+.jl.t { top: 6px; left: 50%; transform: translateX(-50%); }
+.jl.b { bottom: 6px; left: 50%; transform: translateX(-50%); }
+.jl.l { left: 7px; top: 50%; transform: translateY(-50%); }
+.jl.r { right: 7px; top: 50%; transform: translateY(-50%); }
+.joy[data-dir] .jl { opacity: .35; }
+.joy[data-dir="forward"] .jl.t, .joy[data-dir="backward"] .jl.b,
+.joy[data-dir="left"] .jl.l, .joy[data-dir="right"] .jl.r { opacity: 1; color: var(--accent); font-weight: 700; }
+.joy-label { font-size: 13px; font-weight: 600; } .joy-label small { color: var(--muted); font-weight: 400; }
+
+.video-card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; min-width: 0; }
+.video { position: relative; aspect-ratio: 4 / 3; background: #000; overflow: hidden; cursor: crosshair; }
+.video img { width: 100%; height: 100%; object-fit: contain; display: block; user-select: none; -webkit-user-select: none; }
+.video-empty { position: absolute; inset: 0; display: grid; place-items: center; color: #9aa3b2; font-size: 14px; }
+.crosshair { position: absolute; left: 50%; top: 50%; width: 26px; height: 26px; transform: translate(-50%, -50%);
+  pointer-events: none; opacity: .7;
+  background: linear-gradient(#fff, #fff) center/2px 100% no-repeat, linear-gradient(#fff, #fff) center/100% 2px no-repeat;
+  mix-blend-mode: difference; }
+.tap-mark { position: absolute; width: 34px; height: 34px; border: 2px solid #34d399; border-radius: 50%;
+  transform: translate(-50%, -50%); pointer-events: none; animation: tap .6s ease-out forwards; }
+@keyframes tap { from { opacity: 1; transform: translate(-50%, -50%) scale(.5); } to { opacity: 0; transform: translate(-50%, -50%) scale(1.4); } }
+.hud { position: absolute; font-size: 12px; color: #fff; background: rgba(0,0,0,.45); padding: 3px 8px;
+  border-radius: 6px; pointer-events: none; font-variant-numeric: tabular-nums; }
+.hud.tl { top: 8px; left: 8px; } .hud.tr { top: 8px; right: 8px; }
+.hud.bl { bottom: 8px; left: 8px; font-weight: 700; } .hud.br { bottom: 8px; right: 8px; opacity: .75; }
+.hud.bl.near { background: rgba(220,38,38,.8); }
+.toolbar { display: flex; flex-wrap: wrap; gap: 6px; padding: 10px; align-items: center; }
+.toolbar button { font-size: 13px; padding: 8px 10px; }
+.fs-only { display: none; }
+
+/* ---------------- 초음파 ---------------- */
+.sonar { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 14px; align-items: center; }
+#radar { width: 100%; height: auto; background: var(--radar-bg); border-radius: 10px; display: block; }
+.big { font-size: 38px; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1.1; }
+.big span { font-size: 15px; color: var(--muted); margin-left: 4px; font-weight: 400; }
+.big.near b { color: var(--danger); }
+.sonar-side .row { margin-top: 10px; } .sonar-side .row button { flex: 1; }
+
+/* ---------------- 시스템 ---------------- */
+.stats { display: grid; grid-template-columns: auto 1fr; gap: 6px 14px; margin: 0; }
+.stats dt { color: var(--muted); } .stats dd { margin: 0; font-variant-numeric: tabular-nums; }
+.bar { height: 6px; background: var(--btn); border-radius: 3px; margin-top: 4px; overflow: hidden; max-width: 180px; }
+.bar i { display: block; height: 100%; width: 0; background: var(--ok); transition: width .4s; }
+.oled { margin-top: 12px; background: #000; border-radius: 8px; padding: 8px 10px; border: 3px solid #2b2f36; }
+.oled pre { margin: 0; color: #7dd3fc; font: 12px/1.35 ui-monospace, Menlo, Consolas, monospace; white-space: pre; overflow: hidden; }
+
+/* ---------------- 영점 설정 (접기) ---------------- */
+details summary { list-style: none; display: flex; align-items: center; justify-content: space-between; cursor: pointer; }
+details summary::-webkit-details-marker { display: none; }
+details summary h2 { margin: 0; }
+details .chev { transition: transform .2s; color: var(--muted); font-size: 18px; }
+details[open] .chev { transform: rotate(180deg); }
+details[open] summary { margin-bottom: 12px; }
+.table-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; margin-top: 12px; font-size: 13px; }
+th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+td { font-variant-numeric: tabular-nums; }
+tr.sel { background: color-mix(in srgb, var(--accent) 12%, transparent); }
+tbody tr { cursor: pointer; }
+.badge { font-size: 11px; padding: 2px 6px; border-radius: 6px; background: var(--btn); color: var(--muted); }
+.badge.on { background: color-mix(in srgb, var(--ok) 18%, transparent); color: var(--ok); }
+
+#toast { position: fixed; bottom: calc(16px + env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%);
+  background: var(--text); color: var(--bg); padding: 8px 14px; border-radius: 8px; font-size: 13px;
+  opacity: 0; transition: opacity .2s; pointer-events: none; z-index: 20; }
+#toast.show { opacity: .92; }
+
+/* ================= 태블릿·좁은 화면 ================= */
+@media (max-width: 1000px) {
+  main { grid-template-columns: minmax(0, 1fr); }
+  #cockpit { grid-template-columns: 1fr 1fr; }
+  .video-card { grid-column: 1 / -1; grid-row: 1; }
+  #moveWrap { grid-row: 2; } #camWrap { grid-row: 2; }
+}
+
+/* ================= 스마트폰 세로 ================= */
+@media (max-width: 600px) {
+  header { padding: 8px 12px; }
+  h1 { font-size: 15px; }
+  #connText { display: none; }
+  main { padding: 10px; gap: 10px; }
+  #cockpit { gap: 10px; }
+  .video-card { margin: 0 -10px; border-radius: 0; border-left: 0; border-right: 0; }
+  .joy { --size: min(42vw, 180px); }
+  .hud.br { display: none; }
+  .toolbar { display: grid; grid-template-columns: repeat(4, 1fr); }
+  .toolbar .spacer { display: none; }
+  .toolbar #stopBtn { grid-column: 1 / -1; min-height: 48px; font-size: 16px; }
+  .sonar { grid-template-columns: 1fr; }
+  .calib-tools { display: grid; grid-template-columns: 1fr 1fr; }
+  .calib-tools label { grid-column: 1 / -1; display: flex; gap: 8px; align-items: center; }
+  .calib-tools select { flex: 1; }
+  .calib-tools .spacer { display: none; }
+  th:nth-child(5), td:nth-child(5) { display: none; }
+}
+
+/* ================= 스마트폰 가로: 조종석 모드 ================= */
+@media (orientation: landscape) and (max-height: 540px) {
+  header { display: none; }
+  main { padding: 0; gap: 10px; max-width: none; }
+  #cockpit { height: 100dvh; grid-template-columns: 1fr auto 1fr; gap: 6px;
+    padding: 6px max(8px, env(safe-area-inset-right)) 6px max(8px, env(safe-area-inset-left)); }
+  .video-card { grid-row: auto; grid-column: auto; height: calc(100dvh - 12px); display: flex; flex-direction: column;
+    border-radius: 10px; aspect-ratio: auto; }
+  .video { flex: 1; aspect-ratio: auto; height: 0; width: calc((100dvh - 70px) * 4 / 3); max-width: 58vw; }
+  #moveWrap, #camWrap { grid-row: auto; }
+  .joy { --size: min(40vh, 26vw, 200px); }
+  .toolbar { padding: 6px; gap: 4px; flex-wrap: nowrap; overflow-x: auto; }
+  .toolbar button { min-height: 34px; padding: 4px 8px; font-size: 12px; white-space: nowrap; }
+  #snapBtn, #hflipBtn, #vflipBtn, #streamBtn { display: none; }
+  .fs-only { display: inline-block; }
+  .hud.br { display: none; }
+  .card { margin: 0 10px; }
+  #calib { margin-bottom: 10px; }
+}

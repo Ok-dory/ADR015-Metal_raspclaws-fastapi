@@ -1,0 +1,12 @@
+fastapi>=0.110
+uvicorn[standard]>=0.29
+psutil>=5.9
+# 라즈베리파이에서만 필요 (PC 개발 시에는 생략 가능 → 자동으로 mock 백엔드)
+adafruit-blinka; platform_machine == "aarch64"
+adafruit-circuitpython-pca9685; platform_machine == "aarch64"
+# 주변장치 (라즈베리파이 OS 에서는 apt 의 python3-picamera2, python3-opencv,
+#  python3-gpiozero 가 --system-site-packages 로 그대로 사용됩니다)
+luma.oled; platform_machine == "aarch64"
+smbus2; platform_machine == "aarch64"
+# PC 개발 시 테스트 화면(mock 카메라)용
+pillow

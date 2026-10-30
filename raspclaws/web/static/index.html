@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#111318">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <title>RaspClaws Control</title>
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="icon" href="/static/icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<header>
+  <h1>RaspClaws <span>Control</span></h1>
+  <div class="chips">
+    <span class="chip"><span id="conn" class="dot"></span><span id="connText">연결 중</span></span>
+    <span class="chip" id="batChip" title="배터리">🔋 <b id="batTxt">--</b></span>
+    <span class="chip" id="distChip" title="초음파 거리">📡 <b id="distTxt">--</b></span>
+    <button id="fsBtn" class="icon" title="전체화면">⛶</button>
+  </div>
+</header>
+
+<main>
+  <!-- ================= 조종석: 카메라 + 조이스틱 ================= -->
+  <section id="cockpit">
+    <div class="joy-wrap" id="moveWrap">
+      <div class="joy" id="moveJoy" aria-label="이동 조이스틱"><div class="knob"></div>
+        <span class="jl t">전진</span><span class="jl b">후진</span>
+        <span class="jl l">좌회전</span><span class="jl r">우회전</span>
+      </div>
+      <div class="joy-label">이동 <small>W A S D</small></div>
+    </div>
+
+    <div class="video-card">
+      <div class="video" id="video">
+        <img id="stream" alt="" draggable="false">
+        <div class="video-empty" id="videoEmpty">카메라 연결 중…</div>
+        <div class="crosshair"></div>
+        <div class="hud tl"><span id="hudMove">정지</span> · <span id="hudSpeed">SLOW</span> · 🔋<span id="hudBat">--</span></div>
+        <div class="hud tr">PAN <b id="hudPan">--</b>° · TILT <b id="hudTilt">--</b>°</div>
+        <div class="hud bl" id="hudDist">-- cm</div>
+        <div class="hud br hint">화면을 탭하면 그 방향으로 카메라가 향합니다</div>
+      </div>
+      <div class="toolbar">
+        <button id="speedBtn" class="toggle">SLOW</button>
+        <button data-once="stand">STAND</button>
+        <button data-once="headcenter">⌖ 중앙</button>
+        <button id="snapBtn">📷 저장</button>
+        <button id="hflipBtn" class="toggle">좌우반전</button>
+        <button id="vflipBtn" class="toggle">상하반전</button>
+        <button id="streamBtn" class="toggle active">영상 ON</button>
+        <button id="fsBtn2" class="fs-only">⛶</button>
+        <span class="spacer"></span>
+        <button id="stopBtn" class="stop">■ STOP</button>
+      </div>
+    </div>
+
+    <div class="joy-wrap" id="camWrap">
+      <div class="joy" id="camJoy" aria-label="카메라 조이스틱"><div class="knob"></div>
+        <span class="jl t">위</span><span class="jl b">아래</span>
+        <span class="jl l">왼쪽</span><span class="jl r">오른쪽</span>
+      </div>
+      <div class="joy-label">카메라 <small>I J K L</small></div>
+    </div>
+  </section>
+
+  <!-- ================= 초음파 ================= -->
+  <section class="card" id="sonarCard">
+    <h2>초음파 센서 <small>CH14 · Q / E 회전</small></h2>
+    <div class="sonar">
+      <canvas id="radar" width="360" height="200"></canvas>
+      <div class="sonar-side">
+        <div class="big"><b id="distBig">--</b><span>cm</span></div>
+        <div class="muted">센서 각도 <b id="sonarAngle">--</b>°</div>
+        <div class="row">
+          <button data-hold="sonarleft" data-stop="sonarstop" data-key="q">◀ 좌</button>
+          <button data-once="sonarcenter">●</button>
+          <button data-hold="sonarright" data-stop="sonarstop" data-key="e">우 ▶</button>
+        </div>
+        <button id="scanBtn" class="primary wide">부채꼴 스캔</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= 시스템 ================= -->
+  <section class="card" id="sysCard">
+    <h2>시스템</h2>
+    <dl class="stats">
+      <dt>배터리</dt><dd><span id="batDetail">--</span><div class="bar"><i id="batBar"></i></div></dd>
+      <dt>CPU 온도</dt><dd id="cpuTemp">-</dd>
+      <dt>CPU 사용률</dt><dd id="cpuUsage">-</dd>
+      <dt>RAM 사용률</dt><dd id="ramUsage">-</dd>
+      <dt>서보 백엔드</dt><dd id="backend">-</dd>
+      <dt>카메라</dt><dd id="camSrc">-</dd>
+    </dl>
+    <div class="oled" title="로봇 상단 OLED 화면과 같은 내용"><pre id="oledTxt">-</pre></div>
+    <button data-once="release" class="danger wide">RELEASE ALL (모든 서보 힘 빼기)</button>
+  </section>
+
+  <!-- ================= 영점 설정 (접기) ================= -->
+  <details class="card wide" id="calib">
+    <summary><h2>서보 / 영점 설정 <small>PWM INIT SET</small></h2><span class="chev">▾</span></summary>
+    <div class="row calib-tools">
+      <label>채널 <select id="chSel"></select></label>
+      <button id="nudgeL">◀ −1°</button>
+      <button id="nudgeR">+1° ▶</button>
+      <button id="identify">식별(흔들기)</button>
+      <button id="relOne">해제</button>
+      <span class="spacer"></span>
+      <button id="saveCal" class="primary">SAVE</button>
+      <button id="resetCal" class="danger">RESET</button>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>CH</th><th>이름</th><th>논리각</th><th>영점</th><th>물리각</th><th>출력</th></tr></thead>
+        <tbody id="servoRows"></tbody>
+      </table>
+    </div>
+  </details>
+</main>
+
+<div id="toast"></div>
+<script src="/static/app.js"></script>
+</body>
+</html>

@@ -3,3 +3,5 @@ __pycache__/
 *.pyc
 data/servos_init.json
 *.zip
+data/snag_config.json
+data/imu_logs/

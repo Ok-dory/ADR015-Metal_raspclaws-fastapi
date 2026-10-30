@@ -56,6 +56,7 @@ class Settings:
     oled: bool = field(default_factory=lambda: _env("OLED", True))
     battery: bool = field(default_factory=lambda: _env("BATTERY", True))
     ultrasonic: bool = field(default_factory=lambda: _env("ULTRASONIC", True))
+    imu: bool = field(default_factory=lambda: _env("IMU", True))
 
     # --- 데이터 ---
     data_dir: Path = field(default_factory=lambda: _env("DATA_DIR", PROJECT_ROOT / "data"))

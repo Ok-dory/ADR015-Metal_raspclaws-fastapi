@@ -61,7 +61,9 @@ class GaitEngine:
         self.servos = servos
         self.params = params or GaitParams()
         self.fast = False
-        self._target = (0.0, 0.0)       # 요청된 (vx, wz)
+        self._target = (0.0, 0.0)       # 사용자가 요청한 (vx, wz)
+        self._override: tuple[float, float] | None = None  # 자동 회복 등이 잠시 대신 지정
+        self.lift_scale = 1.0           # 다리 드는 높이 배율 (넘어가기 걸음 = 1 이상)
         self._coef = [0.0, 0.0]         # 실제 적용 중인 (왼쪽, 오른쪽) 보폭 계수
         self._phase = 0.0
         self._walking = False
@@ -90,6 +92,8 @@ class GaitEngine:
         """모든 다리를 중립 자세로."""
         with self._lock:
             self._target = (0.0, 0.0)
+            self._override = None
+            self.lift_scale = 1.0
             self._coef = [0.0, 0.0]
             self._walking = False
             self._phase = 0.0
@@ -101,12 +105,33 @@ class GaitEngine:
 
     @property
     def target(self) -> tuple[float, float]:
+        """사용자가 요청한 (vx, wz)."""
         return self._target
+
+    @property
+    def effective_target(self) -> tuple[float, float]:
+        o = self._override
+        return o if o is not None else self._target
+
+    def set_override(self, vx: float, wz: float, lift_scale: float = 1.0) -> None:
+        """자동 동작(걸림 회복 등)이 사용자 입력 대신 보행을 지정."""
+        with self._lock:
+            self._override = (max(-1.0, min(1.0, vx)), max(-1.0, min(1.0, wz)))
+            self.lift_scale = lift_scale
+
+    def clear_override(self) -> None:
+        with self._lock:
+            self._override = None
+            self.lift_scale = 1.0
+
+    def motion_info(self) -> tuple[float, float]:
+        """(보행 위상 0~1, 현재 보폭 세기 0~1) — 센서 Mock·기록용."""
+        return self._phase, max(abs(self._coef[0]), abs(self._coef[1]))
 
     @property
     def direction(self) -> str | None:
         """대표 방향 이름 (상태 표시용). 정지면 None."""
-        vx, wz = self._target
+        vx, wz = self.effective_target
         if vx == 0 and wz == 0:
             return None
         if abs(vx) >= abs(wz) * 2:
@@ -120,11 +145,13 @@ class GaitEngine:
         return self.params.period_fast if self.fast else self.params.period_slow
 
     def snapshot(self) -> dict:
-        vx, wz = self._target
+        vx, wz = self.effective_target
         return {
             "vx": round(vx, 2), "wz": round(wz, 2),
             "left": round(self._coef[0], 2), "right": round(self._coef[1], 2),
             "direction": self.direction,
+            "auto": self._override is not None,
+            "lift_scale": round(self.lift_scale, 2),
         }
 
     def start(self) -> None:
@@ -149,11 +176,12 @@ class GaitEngine:
             t = (phase - 0.5) / 0.5
             swing = 1.0 - 2.0 * t
             lift = 0.0
-        return 90.0 + swing * p.step_amplitude * coef, 90.0 + lift * p.lift_sign
+        return (90.0 + swing * p.step_amplitude * coef,
+                90.0 + lift * self.lift_scale * p.lift_sign)
 
     def _step_coefficients(self, dt: float) -> tuple[float, float]:
         with self._lock:
-            goal = side_coefficients(*self._target)
+            goal = side_coefficients(*self.effective_target)
             max_step = self.params.slew_rate * dt
             for i in (0, 1):
                 diff = goal[i] - self._coef[i]
@@ -173,7 +201,7 @@ class GaitEngine:
     def _tick(self, dt: float) -> None:
         left, right = self._step_coefficients(dt)
         magnitude = max(abs(left), abs(right))
-        stopped = self._target == (0.0, 0.0)
+        stopped = self.effective_target == (0.0, 0.0)
 
         if magnitude < 0.02:
             if self._walking and stopped:

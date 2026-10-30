@@ -41,6 +41,7 @@
         <div class="hud tl"><span id="hudMove">정지</span> · <span id="hudSpeed">SLOW</span> · 🔋<span id="hudBat">--</span></div>
         <div class="hud tr">PAN <b id="hudPan">--</b>° · TILT <b id="hudTilt">--</b>°</div>
         <div class="hud bl" id="hudDist">-- cm</div>
+        <div class="hud tc snag-alert" id="hudSnag" hidden></div>
         <div class="hud br hint">화면을 탭하면 그 방향으로 카메라가 향합니다</div>
       </div>
       <div class="toolbar">
@@ -82,6 +83,54 @@
         <button id="scanBtn" class="primary wide">부채꼴 스캔</button>
       </div>
     </div>
+  </section>
+
+  <!-- ================= 다리 걸림 감지 ================= -->
+  <section class="card" id="snagCard">
+    <h2>다리 걸림 감지 <small>MPU6050 · 자동 회복</small></h2>
+    <div class="snag-top">
+      <button id="snagToggle" class="switch" role="switch" aria-checked="false"><i></i><span>꺼짐</span></button>
+      <span class="snag-state" id="snagState">-</span>
+    </div>
+    <div class="snag-body">
+      <div class="level" title="기준 자세 대비 기울기 (원 = 감지 기준)">
+        <div class="level-ring" id="levelRing"></div><div class="level-dot" id="levelDot"></div>
+      </div>
+      <div class="snag-meters">
+        <div class="meter"><span>기울기</span><b id="tiltVal">--</b><div class="mbar"><i id="tiltBar"></i><em id="tiltMark"></em></div></div>
+        <div class="meter"><span>흔들림</span><b id="gyroVal">--</b><div class="mbar"><i id="gyroBar"></i><em id="gyroMark"></em></div></div>
+        <div class="muted">감지 <b id="snagCount">0</b>회 · 연속 실패 <b id="snagRetries">0</b>회</div>
+      </div>
+    </div>
+    <div class="row snag-actions">
+      <button id="snagZero" title="지금 서 있는 자세를 수평 기준으로 저장">수평 재설정</button>
+      <button id="snagTest" title="걷는 중에 후진 → 넘어가기 걸음을 시험 실행">회복 시험</button>
+      <button id="snagMock" hidden title="하드웨어 없는 테스트 모드 전용">모의 걸림</button>
+    </div>
+
+    <details class="sub">
+      <summary>감지 기준 · 기록</summary>
+      <div class="sliders">
+        <label><span>기울기 기준</span><span><output id="o_tilt_threshold"></output>°</span>
+          <input type="range" data-cfg="tilt_threshold" min="3" max="30" step="0.5"></label>
+        <label><span>흔들림 기준</span><span><output id="o_gyro_threshold"></output>°/s</span>
+          <input type="range" data-cfg="gyro_threshold" min="30" max="400" step="5"></label>
+        <label><span>지속 시간</span><span><output id="o_hold_time"></output>초</span>
+          <input type="range" data-cfg="hold_time" min="0" max="0.6" step="0.05"></label>
+        <label><span>넘어가기 다리 높이</span><span><output id="o_lift_scale"></output>배</span>
+          <input type="range" data-cfg="lift_scale" min="1" max="2.2" step="0.1"></label>
+        <label><span>허용 실패 횟수</span><span><output id="o_max_retries"></output>회</span>
+          <input type="range" data-cfg="max_retries" min="0" max="5" step="1"></label>
+      </div>
+      <div class="record">
+        <div class="row">
+          <input id="recLabel" type="text" maxlength="30" placeholder="기록 메모 (예: 평지, 문턱)">
+          <button id="recBtn" class="primary">● 기록 시작</button>
+        </div>
+        <div class="muted">평소 보행과 일부러 걸린 상황을 각각 기록해 비교하면 기준값을 정하기 쉽습니다.</div>
+        <ul id="recList" class="rec-list"></ul>
+      </div>
+    </details>
   </section>
 
   <!-- ================= 시스템 ================= -->

@@ -68,6 +68,34 @@ def _drive(r: Robot, args):
     r.gait.drive(float(args[0]), float(args[1]))
 
 
+# ---------------------------------------------------------------- 다리 걸림 감지
+@command("snag")
+def _snag(r: Robot, args):
+    """snag on | snag off"""
+    on = args[0].lower() in ("on", "1", "true")
+    return {"enabled": r.snag.update_config(enabled=on).enabled}
+
+
+@command("snagtest")
+def _snagtest(r: Robot, _):
+    """걷는 중에 회복 동작(후진 → 넘어가기 걸음)을 시험 실행."""
+    return {"started": r.snag.trigger_test()}
+
+
+@command("imuzero")
+def _imuzero(r: Robot, _):
+    roll, pitch = r.snag.calibrate()
+    return {"ref_roll": round(roll, 1), "ref_pitch": round(pitch, 1)}
+
+
+@command("mocksnag")
+def _mocksnag(r: Robot, _):
+    """(하드웨어 없는 테스트 모드 전용) 다리 걸림 상황 재현."""
+    if not r.imu.is_mock:
+        raise ValueError("실제 센서가 연결되어 있어 모의 걸림을 사용할 수 없습니다")
+    r.imu.inject_snag()
+
+
 @command("DS", "TS", "stop")
 def _stop(r: Robot, _):
     r.gait.stop()

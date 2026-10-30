@@ -296,6 +296,7 @@
     const oled = s.oled || {};
     $("oledTxt").textContent = (oled.lines || []).join("\n") + (oled.available ? "" : "\n(OLED 미연결 · 미리보기)");
 
+    renderSnag(s.snag);
     if (calib.open) renderServos(s);
   }
 
@@ -360,6 +361,112 @@
         ctx.fillStyle = so.distance < 20 ? "#ef4444" : "#fde047";
         ctx.beginPath(); ctx.arc(dx, dy, 5, 0, 7); ctx.fill();
       }
+    }
+  }
+
+  // ================================================================ 다리 걸림 감지
+  let snagCfg = null, lastSnagEvent = 0, cfgTimer = null, cfgEditing = false;
+  const putSnag = (body) => fetch("/api/snag", {
+    method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
+  }).then((r) => r.json());
+
+  $("snagToggle").onclick = async () => {
+    const on = !(snagCfg && snagCfg.enabled);
+    await putSnag({ enabled: on });
+    toast(on ? "다리 걸림 감지를 켰습니다" : "다리 걸림 감지를 껐습니다");
+  };
+  $("snagZero").onclick = async () => {
+    const r = await fetch("/api/snag/calibrate", { method: "POST" });
+    toast(r.ok ? "지금 자세를 수평 기준으로 저장했습니다" : "기준 저장 실패");
+  };
+  $("snagTest").onclick = async () => {
+    const r = await fetch("/api/snag/test", { method: "POST" });
+    if (!r.ok) toast((await r.json()).detail || "시험할 수 없습니다");
+  };
+  $("snagMock").onclick = () => send("mocksnag");
+
+  document.querySelectorAll("input[data-cfg]").forEach((el) => {
+    el.addEventListener("pointerdown", () => { cfgEditing = true; });
+    el.addEventListener("input", () => {
+      $(`o_${el.dataset.cfg}`).textContent = el.value;
+      clearTimeout(cfgTimer);
+      cfgTimer = setTimeout(() => putSnag({ [el.dataset.cfg]: +el.value }), 250);
+    });
+    el.addEventListener("change", () => { setTimeout(() => { cfgEditing = false; }, 600); });
+  });
+
+  $("recBtn").onclick = async () => {
+    const recording = state && state.snag && state.snag.recording.active;
+    const url = recording ? "/api/snag/record/stop" : "/api/snag/record/start";
+    const r = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ label: $("recLabel").value }) });
+    const d = await r.json();
+    toast(recording ? `기록 저장: ${d.name}` : "기록을 시작했습니다 (최대 5분)");
+    loadLogs();
+  };
+  async function loadLogs() {
+    try {
+      const logs = await (await fetch("/api/snag/logs")).json();
+      $("recList").innerHTML = logs.length
+        ? logs.map((l) => `<li><a href="/api/snag/logs/${encodeURIComponent(l.name)}" download>${l.name}</a><span class="muted">${(l.size / 1024).toFixed(0)} KB</span></li>`).join("")
+        : '<li class="muted">기록 없음</li>';
+    } catch { /* 무시 */ }
+  }
+  document.querySelector("#snagCard details.sub").addEventListener("toggle", (e) => { if (e.target.open) loadLogs(); });
+
+  function renderSnag(sn) {
+    if (!sn) return;
+    snagCfg = sn.config;
+    const c = sn.config, imu = sn.imu || {};
+    const tg = $("snagToggle");
+    tg.setAttribute("aria-checked", String(c.enabled));
+    tg.querySelector("span").textContent = c.enabled ? "켜짐" : "꺼짐";
+
+    const st = $("snagState");
+    st.textContent = sn.state_text;
+    st.className = "snag-state " + ({ watch: "watch", backoff: "warn", stepover: "warn", blocked: "bad" }[sn.state] || "");
+
+    // 수평계: 원 반지름 = 기울기 기준, 점 = 현재 roll/pitch
+    const R = 48, scale = R / Math.max(c.tilt_threshold * 1.6, 1);
+    const ring = c.tilt_threshold * scale * 2;
+    $("levelRing").style.width = $("levelRing").style.height = `${ring}px`;
+    const clamp = (v) => Math.max(-R, Math.min(R, v));
+    $("levelDot").style.transform = `translate(${clamp((imu.roll || 0) * scale)}px, ${clamp(-(imu.pitch || 0) * scale)}px)`;
+    $("levelDot").classList.toggle("over", (imu.tilt || 0) > c.tilt_threshold);
+
+    const bar = (id, mark, val, th, max) => {
+      $(id).style.width = `${Math.min(100, (val / max) * 100)}%`;
+      $(id).classList.toggle("over", val > th);
+      $(mark).style.left = `${Math.min(100, (th / max) * 100)}%`;
+    };
+    $("tiltVal").textContent = imu.available ? `${imu.tilt.toFixed(1)}°` : "--";
+    $("gyroVal").textContent = imu.available ? `${imu.gyro.toFixed(0)}°/s` : "--";
+    bar("tiltBar", "tiltMark", imu.tilt || 0, c.tilt_threshold, c.tilt_threshold * 2);
+    bar("gyroBar", "gyroMark", imu.gyro || 0, c.gyro_threshold, c.gyro_threshold * 2);
+    $("snagCount").textContent = sn.detections;
+    $("snagRetries").textContent = sn.retries;
+    $("snagMock").hidden = !imu.mock;
+    $("snagTest").disabled = !c.enabled;
+
+    if (!cfgEditing) {
+      document.querySelectorAll("input[data-cfg]").forEach((el) => {
+        el.value = c[el.dataset.cfg];
+        $(`o_${el.dataset.cfg}`).textContent = c[el.dataset.cfg];
+      });
+    }
+
+    const rec = sn.recording || {};
+    $("recBtn").textContent = rec.active ? `■ 기록 중지 (${Math.round(rec.seconds)}초)` : "● 기록 시작";
+    $("recBtn").classList.toggle("rec", !!rec.active);
+
+    // 영상 위 경고 + 알림
+    const hud = $("hudSnag");
+    const alert = { backoff: "⚠ 다리 걸림 · 후진 중", stepover: "⚠ 넘어가기 걸음", blocked: "⛔ 막힘 · 정지됨 — 조이스틱을 다시 밀면 해제" }[sn.state];
+    hud.hidden = !alert;
+    if (alert) { hud.textContent = alert; hud.classList.toggle("bad", sn.state === "blocked"); }
+    if (sn.event && sn.event.id !== lastSnagEvent) {
+      if (lastSnagEvent) { toast(sn.event.message); buzz(sn.event.type === "blocked" ? [80, 60, 80] : 40); }
+      lastSnagEvent = sn.event.id;
     }
   }
 

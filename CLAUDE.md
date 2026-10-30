@@ -14,6 +14,7 @@ pip install -r requirements.txt
 RASPCLAWS_BACKEND=mock RASPCLAWS_DATA_DIR=/tmp/rc python run.py   # http://localhost:5000
 ```
 - 서보는 MockBackend, 초음파는 각도 기반 가상 거리, 카메라는 Pillow 테스트 화면
+- 자세 센서는 보행 흔들림 Mock, `mocksnag` 명령(웹 '모의 걸림')으로 다리 걸림 재현
 - API 는 `fastapi.testclient.TestClient(create_app())` 로 테스트 (MJPEG 스트림은 실제 서버 + curl 로)
 - 프론트엔드는 `node --check raspclaws/web/static/app.js` + Playwright 스크린샷(데스크톱 / 390x844 / 844x390)
 
@@ -24,6 +25,7 @@ RASPCLAWS_BACKEND=mock RASPCLAWS_DATA_DIR=/tmp/rc python run.py   # http://local
 - CH12 카메라 팬, CH13 카메라 틸트(반전), CH14 초음파 회전
 - 초음파 GPIO23/24, OLED SSD1306 0x3C, 배터리 ADS7830 0x48
 - 머리 서보(12·13·14)는 헌팅 방지를 위해 release_when_idle 사용
+- MPU6050 0x68 (다리 걸림 간접 감지, 기본 꺼짐 — 실기 기록 데이터로 기준값 조정 후 사용)
 
 ## 원칙
 - 웹 UI(포트 5000 단일) 전용. 원본 APP(8888)/PC GUI 는 대상 아님

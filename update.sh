@@ -1,3 +1,6 @@
+#!/usr/bin/env bash
+# GitHub 에서 최신 코드를 받아오고 서버를 재시작합니다.
+#   사용법: cd ~/raspclaws-fastapi && ./update.sh
 set -euo pipefail
 # 전체를 함수로 감싸 둠: git pull 로 이 파일이 바뀌어도 실행 중인 내용에 영향 없음
 cd "$(dirname "$(readlink -f "$0")")"

@@ -38,14 +38,16 @@
         <img id="stream" alt="" draggable="false">
         <div class="video-empty" id="videoEmpty">카메라 연결 중…</div>
         <div class="crosshair"></div>
-        <div class="hud tl"><span id="hudMove">정지</span> · <span id="hudSpeed">SLOW</span> · 🔋<span id="hudBat">--</span></div>
+        <div class="hud tl"><span id="hudMove">정지</span> · <span id="hudSpeed">보통</span> · 🔋<span id="hudBat">--</span></div>
         <div class="hud tr">PAN <b id="hudPan">--</b>° · TILT <b id="hudTilt">--</b>°</div>
         <div class="hud bl" id="hudDist">-- cm</div>
         <div class="hud tc snag-alert" id="hudSnag" hidden></div>
         <div class="hud br hint">화면을 탭하면 그 방향으로 카메라가 향합니다</div>
       </div>
       <div class="toolbar">
-        <button id="speedBtn" class="toggle">SLOW</button>
+        <div class="seg" id="speedSeg" role="group" aria-label="속도 (키보드 1·2·3)">
+          <button data-speed="slow">느림</button><button data-speed="normal">보통</button><button data-speed="fast">빠름</button>
+        </div>
         <button data-once="stand">STAND</button>
         <button data-once="headcenter">⌖ 중앙</button>
         <button id="snapBtn">📷 저장</button>
@@ -87,7 +89,7 @@
 
   <!-- ================= 다리 걸림 감지 ================= -->
   <section class="card" id="snagCard">
-    <h2>다리 걸림 감지 <small>MPU6050 · 자동 회복</small></h2>
+    <h2>다리 걸림 감지 <small>기울기 · 전진 정체 · 자동 회복</small></h2>
     <div class="snag-top">
       <button id="snagToggle" class="switch" role="switch" aria-checked="false"><i></i><span>꺼짐</span></button>
       <span class="snag-state" id="snagState">-</span>
@@ -99,6 +101,8 @@
       <div class="snag-meters">
         <div class="meter"><span>기울기</span><b id="tiltVal">--</b><div class="mbar"><i id="tiltBar"></i><em id="tiltMark"></em></div></div>
         <div class="meter"><span>흔들림</span><b id="gyroVal">--</b><div class="mbar"><i id="gyroBar"></i><em id="gyroMark"></em></div></div>
+        <div class="meter"><span>전진</span><b id="stallVal">--</b><div class="mbar"><i id="stallBar"></i><em id="stallMark"></em></div></div>
+        <div class="muted" id="stallReason">-</div>
         <div class="muted">감지 <b id="snagCount">0</b>회 · 연속 실패 <b id="snagRetries">0</b>회</div>
       </div>
     </div>
@@ -106,6 +110,7 @@
       <button id="snagZero" title="지금 서 있는 자세를 수평 기준으로 저장">수평 재설정</button>
       <button id="snagTest" title="걷는 중에 후진 → 넘어가기 걸음을 시험 실행">회복 시험</button>
       <button id="snagMock" hidden title="하드웨어 없는 테스트 모드 전용">모의 걸림</button>
+      <button id="stallMock" hidden title="하드웨어 없는 테스트 모드 전용 — 발이 미끄러지는 상황">모의 정체</button>
     </div>
 
     <details class="sub">
@@ -117,6 +122,11 @@
           <input type="range" data-cfg="gyro_threshold" min="30" max="400" step="5"></label>
         <label><span>지속 시간</span><span><output id="o_hold_time"></output>초</span>
           <input type="range" data-cfg="hold_time" min="0" max="0.6" step="0.05"></label>
+        <label class="check"><input type="checkbox" data-cfg-bool="stall_enabled"> 초음파 전진 정체 감지 <small>(발이 미끄러져 제자리에서 허우적댈 때)</small></label>
+        <label><span>정체 판단 시간</span><span><output id="o_stall_time"></output>초</span>
+          <input type="range" data-cfg="stall_time" min="1" max="6" step="0.5"></label>
+        <label><span>최소 전진 거리</span><span><output id="o_stall_progress"></output>cm</span>
+          <input type="range" data-cfg="stall_progress" min="1" max="15" step="0.5"></label>
         <label><span>넘어가기 다리 높이</span><span><output id="o_lift_scale"></output>배</span>
           <input type="range" data-cfg="lift_scale" min="1" max="2.2" step="0.1"></label>
         <label><span>허용 실패 횟수</span><span><output id="o_max_retries"></output>회</span>
@@ -157,6 +167,7 @@
       <button id="nudgeL">◀ −1°</button>
       <button id="nudgeR">+1° ▶</button>
       <button id="identify">식별(흔들기)</button>
+      <button id="exercise" title="현재 보행 속도와 같은 빠르기로 5초간 왕복 — 걸을 때만 이상한 서보 확인">보행 테스트</button>
       <button id="relOne">해제</button>
       <span class="spacer"></span>
       <button id="saveCal" class="primary">SAVE</button>

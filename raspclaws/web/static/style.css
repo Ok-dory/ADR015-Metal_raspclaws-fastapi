@@ -88,6 +88,10 @@ select { padding: 8px; border-radius: 8px; border: 1px solid var(--line); backgr
 .toolbar { display: flex; flex-wrap: wrap; gap: 6px; padding: 10px; align-items: center; }
 .toolbar button { font-size: 13px; padding: 8px 10px; }
 .fs-only { display: none; }
+.seg { display: inline-flex; border-radius: 10px; overflow: hidden; background: var(--btn); }
+.seg button { border-radius: 0; background: transparent; padding: 8px 10px; }
+.seg button + button { border-left: 1px solid var(--line); }
+.seg button.active { background: var(--btn-active); color: var(--btn-active-text); }
 
 /* ---------------- 초음파 ---------------- */
 .sonar { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 14px; align-items: center; }
@@ -157,13 +161,18 @@ details.sub summary { cursor: pointer; color: var(--muted); font-size: 13px; lis
 .sliders label { display: grid; grid-template-columns: 1fr auto; gap: 2px 8px; font-size: 13px; color: var(--muted); }
 .sliders output { color: var(--text); font-weight: 700; font-variant-numeric: tabular-nums; }
 .sliders input { grid-column: 1 / -1; width: 100%; accent-color: var(--accent); }
+.sliders label.check { display: flex; align-items: center; gap: 8px; color: var(--text); }
+.sliders label.check input { width: 18px; height: 18px; accent-color: var(--accent); }
+.sliders label.check { flex-wrap: wrap; }
+.sliders label.check small { color: var(--muted); flex-basis: 100%; padding-left: 26px; }
 .record input[type=text] { flex: 1; min-width: 0; padding: 9px 10px; border-radius: 10px; border: 1px solid var(--line); background: var(--card); color: var(--text); font: inherit; }
 .record .muted { margin-top: 6px; }
 .rec-list { list-style: none; margin: 8px 0 0; padding: 0; font-size: 13px; max-height: 140px; overflow-y: auto; }
 .rec-list li { display: flex; justify-content: space-between; padding: 5px 0; border-bottom: 1px solid var(--line); }
 .rec-list a { color: var(--accent); text-decoration: none; word-break: break-all; }
 #recBtn.rec { background: var(--danger); }
-@media (max-width: 600px) { .snag-body { grid-template-columns: 96px 1fr; } .level { width: 96px; height: 96px; } }
+@media (max-width: 600px) { .snag-body { grid-template-columns: 96px 1fr; } .level { width: 96px; height: 96px; }
+  .snag-actions { display: grid; grid-template-columns: 1fr 1fr; } }
 
 #toast { position: fixed; bottom: calc(16px + env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%);
   background: var(--text); color: var(--bg); padding: 8px 14px; border-radius: 8px; font-size: 13px;
@@ -189,6 +198,8 @@ details.sub summary { cursor: pointer; color: var(--muted); font-size: 13px; lis
   .joy { --size: min(42vw, 180px); }
   .hud.br { display: none; }
   .toolbar { display: grid; grid-template-columns: repeat(4, 1fr); }
+  .toolbar .seg { grid-column: 1 / -1; }
+  .toolbar .seg button { flex: 1; min-height: 44px; }
   .toolbar .spacer { display: none; }
   .toolbar #stopBtn { grid-column: 1 / -1; min-height: 48px; font-size: 16px; }
   .sonar { grid-template-columns: 1fr; }

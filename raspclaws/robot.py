@@ -17,6 +17,7 @@ from .peripherals import BatteryMonitor, CameraService, ImuSensor, OledDisplay, 
 from .peripherals.oled import local_ip
 from .robot_layout import SERVOS, ULTRASONIC
 from .servo import CalibrationStore, ServoController
+from .sim import SimWorld
 
 log = logging.getLogger(__name__)
 
@@ -34,13 +35,17 @@ class Robot:
         self.head = HeadController(self.servos)
 
         self.battery = BatteryMonitor(enabled=settings.battery and hw)
+        # 테스트 모드(서보 mock)에서는 가상 주행으로 초음파 거리를 흉내 냄
+        self.sim = None if hw else SimWorld(self.gait)
         sensor = UltrasonicSensor(enabled=settings.ultrasonic and hw,
-                                  mock_angle=lambda: self.servos.get_angle(ULTRASONIC))
+                                  mock_angle=lambda: self.servos.get_angle(ULTRASONIC),
+                                  mock_front=self.sim.front_distance if self.sim else None)
         self.sonar = SonarController(self.servos, sensor)
         self.camera = CameraService(enabled=settings.camera,
                                     width=settings.camera_width, height=settings.camera_height)
         self.imu = ImuSensor(enabled=settings.imu and hw, mock_motion=self.gait.motion_info)
-        self.snag = SnagGuard(self.gait, self.imu, settings.data_dir)
+        self.snag = SnagGuard(self.gait, self.imu, settings.data_dir,
+                              sonar=self.sonar, simulated=not hw)
         self.version = version.snapshot(settings.data_dir)   # 시작 시 한 번 읽음
         self._started = time.monotonic()
         self.oled = OledDisplay(self._oled_lines, enabled=settings.oled and hw)
@@ -50,6 +55,8 @@ class Robot:
         self.servos.start()
         self.gait.start()
         self.battery.start()
+        if self.sim:
+            self.sim.start()
         self.sonar.start()
         self.imu.start()
         self.snag.start()
@@ -65,6 +72,8 @@ class Robot:
     def shutdown(self) -> None:
         self.oled.stop(farewell=["RaspClaws", "", "SERVER STOPPED"])
         self.snag.stop()
+        if self.sim:
+            self.sim.stop()
         self.imu.stop()
         self.sonar.stop()
         self.sonar.sensor.close()
@@ -88,7 +97,7 @@ class Robot:
             f"RaspClaws  {time.strftime('%H:%M')}",
             f"IP {local_ip()}",
             self._oled_status_line(),
-            snag_line or f"MOVE {move} / {'FAST' if self.gait.fast else 'SLOW'}",
+            snag_line or f"MOVE {move} / {self.gait.speed_mode.upper()}",
             f"{bat_txt}  {temp:.0f}C" if temp is not None else bat_txt,
         ]
 
@@ -104,7 +113,7 @@ class Robot:
         return {
             "backend": self.backend_name,
             "moving": self.gait.direction,
-            "speed_mode": "fast" if self.gait.fast else "slow",
+            "speed_mode": self.gait.speed_mode,
         }
 
     def full_state(self) -> dict:

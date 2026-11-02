@@ -27,6 +27,17 @@ from ..servo import ServoController
 
 log = logging.getLogger(__name__)
 
+# 속도 단계: 이름 → (한 주기 시간(s), 보폭 배율)
+#   slow   : 예전 SLOW 그대로
+#   normal : 예전 FAST (기본값)
+#   fast   : 더 빠른 단계 — 주기를 줄이고 보폭을 약간 키움
+SPEED_MODES: dict[str, tuple[float, float]] = {
+    "slow": (1.4, 1.0),
+    "normal": (0.8, 1.0),
+    "fast": (0.55, 1.15),
+}
+SPEED_ORDER = ("slow", "normal", "fast")
+
 # 기존 버튼/명령 호환: 방향 이름 → (vx, wz)
 DIRECTIONS: dict[str, tuple[float, float]] = {
     "forward": (1.0, 0.0),
@@ -41,8 +52,6 @@ class GaitParams:
     step_amplitude: float = 18.0   # 최대 hip 스윙 진폭(deg)
     lift_height: float = 25.0      # 다리 드는 높이(deg)
     lift_sign: int = 1             # 다리가 '위'로 가는 논리 방향 (+1/-1)
-    period_fast: float = 0.8       # 최대 입력일 때 한 주기 시간(s)
-    period_slow: float = 1.4
     min_cadence: float = 0.5       # 입력이 아주 작을 때 걸음 속도 비율 (0~1)
     deadzone: float = 0.08         # 이보다 작은 입력은 정지로 간주
     slew_rate: float = 3.0         # 보폭 계수 변화 속도(1/s) — 급변 시 다리 튐 방지
@@ -60,7 +69,7 @@ class GaitEngine:
     def __init__(self, servos: ServoController, params: GaitParams | None = None) -> None:
         self.servos = servos
         self.params = params or GaitParams()
-        self.fast = False
+        self.speed_mode = "normal"
         self._target = (0.0, 0.0)       # 사용자가 요청한 (vx, wz)
         self._override: tuple[float, float] | None = None  # 자동 회복 등이 잠시 대신 지정
         self.lift_scale = 1.0           # 다리 드는 높이 배율 (넘어가기 걸음 = 1 이상)
@@ -140,9 +149,24 @@ class GaitEngine:
             return "left" if wz > 0 else "right"
         return ("forward" if vx > 0 else "backward") + ("-left" if wz > 0 else "-right")
 
+    def set_speed(self, mode: str) -> str:
+        if mode not in SPEED_MODES:
+            raise ValueError(f"알 수 없는 속도: {mode} (slow / normal / fast)")
+        self.speed_mode = mode
+        return mode
+
+    def speed_step(self, delta: int) -> str:
+        """한 단계 빠르게(+1) / 느리게(-1)."""
+        i = SPEED_ORDER.index(self.speed_mode) + delta
+        return self.set_speed(SPEED_ORDER[max(0, min(len(SPEED_ORDER) - 1, i))])
+
     @property
     def period(self) -> float:
-        return self.params.period_fast if self.fast else self.params.period_slow
+        return SPEED_MODES[self.speed_mode][0]
+
+    @property
+    def stride_scale(self) -> float:
+        return SPEED_MODES[self.speed_mode][1]
 
     def snapshot(self) -> dict:
         vx, wz = self.effective_target
@@ -176,7 +200,7 @@ class GaitEngine:
             t = (phase - 0.5) / 0.5
             swing = 1.0 - 2.0 * t
             lift = 0.0
-        return (90.0 + swing * p.step_amplitude * coef,
+        return (90.0 + swing * p.step_amplitude * self.stride_scale * coef,
                 90.0 + lift * self.lift_scale * p.lift_sign)
 
     def _step_coefficients(self, dt: float) -> tuple[float, float]:

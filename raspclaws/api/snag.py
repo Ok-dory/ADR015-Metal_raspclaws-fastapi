@@ -23,6 +23,10 @@ class SnagConfigIn(BaseModel):
     lift_scale: float | None = Field(None, ge=1, le=2.2)
     max_retries: int | None = Field(None, ge=0, le=5)
     reset_time: float | None = Field(None, ge=0.5, le=30)
+    stall_enabled: bool | None = None
+    stall_time: float | None = Field(None, ge=1, le=10)
+    stall_progress: float | None = Field(None, ge=0.5, le=30)
+    stall_range: float | None = Field(None, ge=30, le=200)
 
 
 class RecordIn(BaseModel):

@@ -17,6 +17,7 @@ RASPCLAWS_BACKEND=mock RASPCLAWS_DATA_DIR=/tmp/rc python run.py   # http://local
 ```
 - 서보는 MockBackend, 초음파는 각도 기반 가상 거리, 카메라는 Pillow 테스트 화면
 - 자세 센서는 보행 흔들림 Mock, `mocksnag` 명령(웹 '모의 걸림')으로 다리 걸림 재현
+- 초음파는 `raspclaws/sim.py` 가상 주행(전진하면 정면 거리 감소), `mockstall`(웹 '모의 정체')로 미끄러짐 재현
 - API 는 `fastapi.testclient.TestClient(create_app())` 로 테스트 (MJPEG 스트림은 실제 서버 + curl 로)
 - 프론트엔드는 `node --check raspclaws/web/static/app.js` + Playwright 스크린샷(데스크톱 / 390x844 / 844x390)
 

@@ -1,7 +1,7 @@
 """서보 개별 제어 및 캘리브레이션 API."""
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
 from ..robot import Robot
@@ -39,6 +39,24 @@ def set_servo(body: AngleIn, channel: int = Depends(check_channel),
 def release_servo(channel: int = Depends(check_channel), robot: Robot = Depends(get_robot)):
     robot.servos.release(channel)
     return {"channel": channel, "engaged": False}
+
+
+class ExerciseIn(BaseModel):
+    amplitude: float = Field(18.0, ge=2, le=40)
+    period: float | None = Field(None, ge=0.3, le=3, description="생략 시 현재 보행 속도")
+    duration: float = Field(5.0, ge=1, le=20)
+
+
+@router.post("/servos/{channel}/exercise")
+def exercise_servo(body: ExerciseIn | None = None, channel: int = Depends(check_channel),
+                   robot: Robot = Depends(get_robot)):
+    """보행과 같은 속도로 한 채널만 반복 왕복 (걸을 때만 이상한 서보 진단용)."""
+    body = body or ExerciseIn()
+    if robot.gait.direction is not None:
+        raise HTTPException(409, "걷는 중에는 시험할 수 없습니다")
+    period = body.period or robot.gait.period
+    robot.servos.exercise(channel, body.amplitude, period, body.duration)
+    return {"channel": channel, "amplitude": body.amplitude, "period": period}
 
 
 @router.post("/servos/{channel}/identify")

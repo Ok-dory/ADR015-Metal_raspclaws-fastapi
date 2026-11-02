@@ -121,7 +121,8 @@
   $("stopBtn").onclick = () => {
     setDrive(0, 0); send("DS"); send("headvel 0 0"); send("sonarstop"); buzz(30);
   };
-  $("speedBtn").onclick = () => send(state && state.speed_mode === "fast" ? "slow" : "fast");
+  document.querySelectorAll("#speedSeg [data-speed]").forEach((b) =>
+    b.addEventListener("click", () => { send(`speed ${b.dataset.speed}`); buzz(); }));
   $("scanBtn").onclick = () => { send("sonarscan"); buzz(); };
 
   // ================================================================ 키보드 (PC)
@@ -146,6 +147,7 @@
     else if (camKeys[k]) { keysDown.add(k); camFromKeys(); }
     else if (k === "q" || k === "e") { const b = document.querySelector(`[data-key="${k}"]`); if (b) press(b); }
     else if (k === " ") { e.preventDefault(); $("stopBtn").click(); }
+    else if (k === "1" || k === "2" || k === "3") send(`speed ${["slow", "normal", "fast"][+k - 1]}`);
   });
   addEventListener("keyup", (e) => {
     const k = e.key.toLowerCase();
@@ -243,6 +245,11 @@
   $("nudgeL").onclick = () => send(`SiLeft ${selected}`);
   $("nudgeR").onclick = () => send(`SiRight ${selected}`);
   $("identify").onclick = () => fetch(`/api/servos/${selected}/identify`, { method: "POST" });
+  $("exercise").onclick = async () => {
+    const r = await fetch(`/api/servos/${selected}/exercise`, { method: "POST" });
+    const d = await r.json();
+    toast(r.ok ? `CH${selected} 보행 테스트 5초 (±${d.amplitude}°, ${d.period}초 주기)` : d.detail);
+  };
   $("relOne").onclick = () => send(`release ${selected}`);
   $("saveCal").onclick = async () => {
     const r = await fetch("/api/calibration/save", { method: "POST" });
@@ -279,9 +286,9 @@
     drawRadar(so);
 
     $("hudMove").textContent = driveText(s.drive);
-    $("hudSpeed").textContent = s.speed_mode === "fast" ? "FAST" : "SLOW";
-    $("speedBtn").textContent = s.speed_mode === "fast" ? "FAST" : "SLOW";
-    $("speedBtn").classList.toggle("active", s.speed_mode === "fast");
+    $("hudSpeed").textContent = { slow: "느림", normal: "보통", fast: "빠름" }[s.speed_mode] || s.speed_mode;
+    document.querySelectorAll("#speedSeg [data-speed]").forEach((b) =>
+      b.classList.toggle("active", b.dataset.speed === s.speed_mode));
     if (s.head) { $("hudPan").textContent = s.head.pan.toFixed(0); $("hudTilt").textContent = s.head.tilt.toFixed(0); }
 
     const cam = s.camera || {};
@@ -390,6 +397,9 @@
     if (!r.ok) toast((await r.json()).detail || "시험할 수 없습니다");
   };
   $("snagMock").onclick = () => send("mocksnag");
+  $("stallMock").onclick = () => send("mockstall");
+  document.querySelectorAll("input[data-cfg-bool]").forEach((el) =>
+    el.addEventListener("change", () => putSnag({ [el.dataset.cfgBool]: el.checked })));
 
   document.querySelectorAll("input[data-cfg]").forEach((el) => {
     el.addEventListener("pointerdown", () => { cfgEditing = true; });
@@ -449,11 +459,21 @@
     $("gyroVal").textContent = imu.available ? `${imu.gyro.toFixed(0)}°/s` : "--";
     bar("tiltBar", "tiltMark", imu.tilt || 0, c.tilt_threshold, c.tilt_threshold * 2);
     bar("gyroBar", "gyroMark", imu.gyro || 0, c.gyro_threshold, c.gyro_threshold * 2);
+    const st2 = sn.stall || {};
+    const prog = st2.progress;
+    $("stallVal").textContent = prog == null ? "--" : `${prog.toFixed(1)}cm`;
+    bar("stallBar", "stallMark", prog == null ? 0 : Math.max(0, prog), c.stall_progress, c.stall_progress * 4);
+    $("stallBar").classList.toggle("over", prog != null && prog < c.stall_progress);
+    $("stallReason").textContent = c.stall_enabled
+      ? `전진 정체: ${st2.reason || "-"}${st2.active && st2.progress == null ? ` (${st2.span || 0}/${c.stall_time}초)` : st2.active ? ` · ${c.stall_time}초간 이동 거리` : ""}`
+      : "전진 정체 감지 꺼짐";
+    $("stallMock").hidden = !sn.simulated;
     $("snagCount").textContent = sn.detections;
     $("snagRetries").textContent = sn.retries;
     $("snagMock").hidden = !imu.mock;
     $("snagTest").disabled = !c.enabled;
 
+    document.querySelectorAll("input[data-cfg-bool]").forEach((el) => { el.checked = !!c[el.dataset.cfgBool]; });
     if (!cfgEditing) {
       document.querySelectorAll("input[data-cfg]").forEach((el) => {
         el.value = c[el.dataset.cfg];

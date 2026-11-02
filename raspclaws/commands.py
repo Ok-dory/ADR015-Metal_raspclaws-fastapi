@@ -96,6 +96,14 @@ def _mocksnag(r: Robot, _):
     r.imu.inject_snag()
 
 
+@command("mockstall")
+def _mockstall(r: Robot, _):
+    """(테스트 모드 전용) 발이 미끄러져 앞으로 못 나가는 상황 재현."""
+    if r.sim is None:
+        raise ValueError("실제 로봇에서는 모의 정체를 사용할 수 없습니다")
+    r.sim.stall()
+
+
 @command("DS", "TS", "stop")
 def _stop(r: Robot, _):
     r.gait.stop()
@@ -107,14 +115,30 @@ def _stand(r: Robot, _):
     r.head.center()
 
 
-@command("fast")
-def _fast(r: Robot, _):
-    r.gait.fast = True
-
-
 @command("slow")
 def _slow(r: Robot, _):
-    r.gait.fast = False
+    return {"speed": r.gait.set_speed("slow")}
+
+
+@command("normal")
+def _normal(r: Robot, _):
+    return {"speed": r.gait.set_speed("normal")}
+
+
+@command("fast")
+def _fast(r: Robot, _):
+    return {"speed": r.gait.set_speed("fast")}
+
+
+@command("speed")
+def _speed(r: Robot, args):
+    """speed slow|normal|fast  또는  speed up|down"""
+    arg = args[0].lower()
+    if arg in ("up", "+"):
+        return {"speed": r.gait.speed_step(+1)}
+    if arg in ("down", "-"):
+        return {"speed": r.gait.speed_step(-1)}
+    return {"speed": r.gait.set_speed(arg)}
 
 
 # ---------------------------------------------------------------- 머리

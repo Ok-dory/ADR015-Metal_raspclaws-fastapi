@@ -15,9 +15,11 @@ MAX_DISTANCE_M = 2.0
 
 class UltrasonicSensor:
     def __init__(self, enabled: bool = True,
-                 mock_angle: Callable[[], float] | None = None) -> None:
+                 mock_angle: Callable[[], float] | None = None,
+                 mock_front: Callable[[], float] | None = None) -> None:
         self._sensor = None
         self._mock_angle = mock_angle
+        self._mock_front = mock_front   # 테스트 모드: 정면 거리(가상 주행)
         if enabled:
             try:
                 from gpiozero import DistanceSensor
@@ -39,6 +41,8 @@ class UltrasonicSensor:
                 return None
         # Mock: 센서 각도에 따라 달라지는 가상의 벽 (레이더 화면 테스트용)
         angle = self._mock_angle() if self._mock_angle else 90.0
+        if self._mock_front and abs(angle - 90) <= 15:
+            return round(self._mock_front() + random.uniform(-1, 1), 1)
         base = 60 + 50 * math.cos(math.radians((angle - 90) * 2))
         return round(base + random.uniform(-2, 2), 1)
 

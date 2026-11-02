@@ -13,7 +13,7 @@ router = APIRouter(tags=["motion"])
 
 
 class SpeedIn(BaseModel):
-    mode: Literal["fast", "slow"]
+    mode: Literal["slow", "normal", "fast"]
 
 
 class DriveIn(BaseModel):
@@ -52,7 +52,7 @@ def stand(robot: Robot = Depends(get_robot)):
 
 @router.put("/motion/speed")
 def set_speed(body: SpeedIn, robot: Robot = Depends(get_robot)):
-    robot.gait.fast = body.mode == "fast"
+    robot.gait.set_speed(body.mode)
     return robot.status()
 
 

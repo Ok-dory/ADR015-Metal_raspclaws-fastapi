@@ -12,6 +12,7 @@
 from __future__ import annotations
 
 import logging
+import math
 import threading
 import time
 from dataclasses import dataclass, field
@@ -172,6 +173,26 @@ class ServoController:
                 time.sleep(0.35)
 
         threading.Thread(target=_wiggle, name=f"identify-{channel}", daemon=True).start()
+
+    def exercise(self, channel: int, amplitude: float = 18.0, period: float = 0.8,
+                 duration: float = 5.0) -> None:
+        """보행과 같은 진폭·속도로 한 채널만 반복 왕복 (비동기).
+
+        '식별'은 천천히 움직이지만 보행은 빠르게 왕복하므로, 식별에서는 멀쩡한데
+        걸을 때만 이상한 서보(전원·기어·나사 조임 문제)를 따로 확인할 때 사용합니다.
+        """
+        self._state(channel)
+
+        def _run() -> None:
+            t0 = time.monotonic()
+            while time.monotonic() - t0 < duration:
+                t = time.monotonic() - t0
+                self.set_angle(channel, 90.0 + amplitude * math.sin(2 * math.pi * t / period),
+                               speed=None)
+                time.sleep(0.02)
+            self.set_angle(channel, 90.0, speed=60)
+
+        threading.Thread(target=_run, name=f"exercise-{channel}", daemon=True).start()
 
     # ------------------------------------------------------------------ 상태
     def snapshot(self) -> list[dict]:

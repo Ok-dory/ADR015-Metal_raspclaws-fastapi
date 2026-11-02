@@ -28,6 +28,32 @@ def list_servos(robot: Robot = Depends(get_robot)):
     return robot.servos.snapshot()
 
 
+class SwapIn(BaseModel):
+    a: int = Field(..., ge=0, le=15)
+    b: int = Field(..., ge=0, le=15)
+
+
+@router.get("/servos/swaps")
+def get_swaps(robot: Robot = Depends(get_robot)):
+    return {"swaps": robot.backend.swaps}
+
+
+@router.put("/servos/swaps")
+def set_swap(body: SwapIn, robot: Robot = Depends(get_robot)):
+    """두 채널의 출력 포트를 맞바꿈 (예: CH2 서보를 CH15 포트에 꽂아 사용)."""
+    try:
+        robot.backend.set_swap(body.a, body.b)
+    except ValueError as exc:
+        raise HTTPException(422, str(exc))
+    return {"swaps": robot.backend.swaps}
+
+
+@router.delete("/servos/swaps")
+def clear_swaps(robot: Robot = Depends(get_robot)):
+    robot.backend.clear()
+    return {"swaps": []}
+
+
 @router.put("/servos/{channel}")
 def set_servo(body: AngleIn, channel: int = Depends(check_channel),
               robot: Robot = Depends(get_robot)):

@@ -12,6 +12,7 @@ import time
 from . import system_info, version
 from .config import Settings
 from .hardware import create_backend
+from .hardware.remap import ChannelRemap
 from .motion import GaitEngine, HeadController, SnagGuard, SonarController
 from .peripherals import BatteryMonitor, CameraService, ImuSensor, OledDisplay, UltrasonicSensor
 from .peripherals.oled import local_ip
@@ -27,6 +28,8 @@ class Robot:
         self.settings = settings
         backend = create_backend(settings.backend, settings.i2c_address, settings.pwm_frequency,
                                  settings.pca_driver)
+        # 포트 바꾸기(채널 재배치)를 맨 바깥에 씌움 → 나머지 코드는 원래 채널 번호 사용
+        backend = ChannelRemap(backend, settings.data_dir / "channel_map.json")
         self.backend = backend
         # 실제 로봇 여부: 서보 드라이버 연결과 무관하게 판단 (드라이버가 안 잡혀도
         # OLED·센서는 따로 동작하고, 드라이버는 연결될 때까지 재시도)
@@ -118,7 +121,8 @@ class Robot:
         return {
             "backend": self.backend.name,
             "servo_driver": {"connected": self.backend.connected,
-                             "error": getattr(self.backend, "error", None)},
+                             "error": getattr(self.backend, "error", None),
+                             "swaps": self.backend.swaps},
             "moving": self.gait.direction,
             "speed_mode": self.gait.speed_mode,
         }

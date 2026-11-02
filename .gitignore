@@ -7,3 +7,4 @@ data/snag_config.json
 data/imu_logs/
 data/update_status.json
 data/no-auto-update
+data/channel_map.json

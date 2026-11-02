@@ -123,6 +123,10 @@ details .chev { transition: transform .2s; color: var(--muted); font-size: 18px;
 details[open] .chev { transform: rotate(180deg); }
 details[open] summary { margin-bottom: 12px; }
 .table-wrap { overflow-x: auto; }
+.swap-row { margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--line); font-size: 13px; }
+.swap-row .muted { font-weight: 600; }
+#swapInfo { color: var(--warn); font-weight: 600; }
+.port-tag { font-size: 11px; color: var(--warn); margin-left: 4px; }
 table { width: 100%; border-collapse: collapse; margin-top: 12px; font-size: 13px; }
 th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line); white-space: nowrap; }
 td { font-variant-numeric: tabular-nums; }

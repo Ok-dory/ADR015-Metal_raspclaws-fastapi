@@ -252,6 +252,20 @@
     toast(r.ok ? `CH${selected} 보행 테스트 5초 (±${d.amplitude}°, ${d.period}초 주기)` : d.detail);
   };
   $("relOne").onclick = () => send(`release ${selected}`);
+  for (let ch = 0; ch < 16; ch++) $("swapTo").add(new Option(`CH${ch}`, ch, false, ch === 15));
+  $("swapApply").onclick = async () => {
+    const b = +$("swapTo").value;
+    if (b === selected) return toast("서로 다른 채널을 골라 주세요");
+    if (!confirm(`CH${selected} 서보 케이블을 CH${b} 포트에 꽂으셨나요?\n(CH${selected} ↔ CH${b} 출력을 맞바꿉니다)`)) return;
+    const r = await fetch("/api/servos/swaps", { method: "PUT", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ a: selected, b }) });
+    toast(r.ok ? `CH${selected} ↔ CH${b} 포트를 바꿨습니다` : "포트 바꾸기 실패");
+  };
+  $("swapClear").onclick = async () => {
+    await fetch("/api/servos/swaps", { method: "DELETE" });
+    toast("포트를 원래대로 되돌렸습니다 (케이블도 원래 포트로 옮겨 주세요)");
+  };
+
   $("saveCal").onclick = async () => {
     const r = await fetch("/api/calibration/save", { method: "POST" });
     toast(r.ok ? "영점 저장 완료" : "저장 실패");
@@ -269,7 +283,9 @@
     const batText = bat.percent != null ? `${bat.percent}%` : "--";
     $("batTxt").textContent = batText; $("hudBat").textContent = batText;
     $("batChip").className = "chip" + (bat.low ? " bad" : bat.percent != null && bat.percent < 25 ? " warn" : "");
-    $("batDetail").textContent = bat.voltage != null ? `${bat.voltage.toFixed(2)} V · ${bat.percent}%${bat.low ? " (충전 필요)" : ""}` : (bat.available ? "측정 중…" : "측정 불가");
+    $("batDetail").textContent = bat.voltage != null
+      ? `${bat.voltage.toFixed(2)} V · ${bat.percent}%${bat.low ? " (충전 필요)" : ""}${bat.min_recent != null && bat.voltage - bat.min_recent > 0.15 ? ` · 최근 10초 최저 ${bat.min_recent.toFixed(2)} V` : ""}`
+      : (bat.available ? "측정 중…" : "측정 불가");
     $("batBar").style.width = `${bat.percent || 0}%`;
     $("batBar").style.background = bat.low ? "var(--danger)" : bat.percent < 25 ? "var(--warn)" : "var(--ok)";
 
@@ -333,8 +349,16 @@
     return parts.join(" · ");
   }
 
+  function portOf(ch) {
+    const sw = (state && state.servo_driver && state.servo_driver.swaps) || [];
+    for (const [a, b] of sw) { if (a === ch) return b; if (b === ch) return a; }
+    return ch;
+  }
+
   function renderServos(s) {
     if (!s) return;
+    const sw = (s.servo_driver && s.servo_driver.swaps) || [];
+    $("swapInfo").textContent = sw.length ? `적용 중: ${sw.map(([a, b]) => `CH${a} ↔ CH${b}`).join(", ")}` : "";
     const sel = $("chSel");
     if (!sel.options.length) {
       s.servos.forEach((sv) => sel.add(new Option(`${sv.channel} · ${sv.name}`, sv.channel)));
@@ -342,7 +366,7 @@
     }
     $("servoRows").innerHTML = s.servos.map((sv) => `
       <tr data-ch="${sv.channel}" class="${sv.channel === selected ? "sel" : ""}">
-        <td>${sv.channel}</td><td>${sv.name}</td><td>${sv.angle}</td>
+        <td>${sv.channel}${portOf(sv.channel) !== sv.channel ? `<span class="port-tag">→ 포트 ${portOf(sv.channel)}</span>` : ""}</td><td>${sv.name}</td><td>${sv.angle}</td>
         <td>${sv.center}</td><td>${sv.physical}</td>
         <td><span class="badge ${sv.engaged ? "on" : ""}">${sv.engaged ? "ON" : "OFF"}</span></td>
       </tr>`).join("");

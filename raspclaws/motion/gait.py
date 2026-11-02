@@ -55,6 +55,9 @@ class GaitParams:
     min_cadence: float = 0.5       # 입력이 아주 작을 때 걸음 속도 비율 (0~1)
     deadzone: float = 0.08         # 이보다 작은 입력은 정지로 간주
     slew_rate: float = 3.0         # 보폭 계수 변화 속도(1/s) — 급변 시 다리 튐 방지
+    # 다리 앞뒤 방향 전환을 부드럽게 (0 = 직선 왕복, 1 = 완전 코사인).
+    # 방향이 급하게 꺾이는 순간 여러 서보가 동시에 큰 전류를 당겨 전압이 떨어지는 것을 줄임
+    smoothing: float = 0.6
     rate_hz: float = 50.0
 
 
@@ -192,13 +195,14 @@ class GaitEngine:
     def _leg_pose(self, phase: float, coef: float) -> tuple[float, float]:
         """phase(0~1), 보폭 계수 → (hip 논리각, lift 논리각)."""
         p = self.params
+        k = p.smoothing
         if phase < 0.5:   # swing: 들어서 뒤→앞
             t = phase / 0.5
-            swing = -1.0 + 2.0 * t
+            swing = (1 - k) * (-1.0 + 2.0 * t) + k * -math.cos(math.pi * t)
             lift = math.sin(math.pi * t) * p.lift_height
         else:             # stance: 딛고 앞→뒤 (몸이 앞으로 나아감)
             t = (phase - 0.5) / 0.5
-            swing = 1.0 - 2.0 * t
+            swing = (1 - k) * (1.0 - 2.0 * t) + k * math.cos(math.pi * t)
             lift = 0.0
         return (90.0 + swing * p.step_amplitude * self.stride_scale * coef,
                 90.0 + lift * self.lift_scale * p.lift_sign)

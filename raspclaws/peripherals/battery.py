@@ -39,6 +39,7 @@ class BatteryMonitor:
         self._adc = None
         self.voltage: float | None = None
         self._samples: deque[float] = deque(maxlen=10)
+        self._recent: deque[tuple[float, float]] = deque()   # 최근 10초 최저 전압 (부하 시 전압 강하 확인)
         self._running = threading.Event()
         if enabled:
             try:
@@ -72,6 +73,10 @@ class BatteryMonitor:
                     good = [v for v in self._samples if abs(v - med) < 1.0]
                     if good:
                         self.voltage = sum(good) / len(good)
+                        now = time.monotonic()
+                        self._recent.append((now, min(good)))
+                        while self._recent and now - self._recent[0][0] > 10:
+                            self._recent.popleft()
                     self._samples.clear()
             except OSError as exc:
                 log.debug("배터리 읽기 실패: %s", exc)
@@ -88,6 +93,7 @@ class BatteryMonitor:
         return {
             "available": self.available,
             "voltage": round(self.voltage, 2) if self.voltage is not None else None,
+            "min_recent": round(min(v for _, v in self._recent), 2) if self._recent else None,
             "percent": self.percent,
             "low": self.voltage is not None and self.voltage < WARN_VOLTAGE,
         }

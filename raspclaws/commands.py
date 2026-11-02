@@ -254,6 +254,16 @@ def _resetcal(r: Robot, _):
     r.servos.reset_centers()
 
 
+@command("swap")
+def _swap(r: Robot, args):
+    """포트 바꾸기: swap 2 15  /  해제: swap clear"""
+    if args and args[0].lower() in ("clear", "off", "reset"):
+        r.backend.clear()
+    else:
+        r.backend.set_swap(int(args[0]), int(args[1]))
+    return {"swaps": r.backend.swaps}
+
+
 @command("release")
 def _release(r: Robot, args):
     if args:

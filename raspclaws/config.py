@@ -40,6 +40,8 @@ class Settings:
     backend: str = field(default_factory=lambda: _env("BACKEND", "auto"))
     i2c_address: int = field(default_factory=lambda: _env("I2C_ADDRESS", 0x5F))
     pwm_frequency: int = field(default_factory=lambda: _env("PWM_FREQ", 50))
+    # native: smbus2 로 직접 제어(기본) / adafruit: Adafruit 라이브러리(예비)
+    pca_driver: str = field(default_factory=lambda: _env("PCA_DRIVER", "native"))
     min_pulse_us: float = field(default_factory=lambda: _env("MIN_PULSE_US", 500.0))
     max_pulse_us: float = field(default_factory=lambda: _env("MAX_PULSE_US", 2400.0))
     actuation_range: float = 180.0

@@ -38,7 +38,74 @@ def on_raspberry_pi() -> bool:
         return False
 
 
+# PCA9685 레지스터
+_MODE1, _MODE2, _PRESCALE, _LED0_ON_L = 0x00, 0x01, 0xFE, 0x06
+_RESTART, _AUTO_INC, _SLEEP = 0x80, 0x20, 0x10
+_OSC_HZ = 25_000_000
+
+
 class PCA9685Backend:
+    """PCA9685 를 smbus2 로 직접 제어 (Adafruit Blinka 불필요).
+
+    Blinka 는 import 시 GPIO 라이브러리(gpiod) 버전까지 검사해서, 서보와 무관한
+    패키지 버전 문제로 서보 제어 전체가 막히는 일이 있었습니다. 필요한 레지스터는
+    몇 개뿐이라 직접 다루는 편이 단순하고 안정적입니다.
+    """
+
+    name = "pca9685"
+    connected = True
+    generation = 0
+
+    def __init__(self, address: int = 0x5F, frequency: int = 50, bus: int = 1,
+                 smbus_factory: Callable[[int], object] | None = None) -> None:
+        if smbus_factory is None:
+            try:
+                from smbus2 import SMBus as smbus_factory
+            except ImportError:
+                from smbus import SMBus as smbus_factory  # python3-smbus (apt)
+        self._lock = threading.Lock()
+        self._addr = address
+        self._bus = smbus_factory(bus)
+        try:
+            self._bus.write_byte_data(address, _MODE1, 0x00)          # 리셋 (= Adafruit reset)
+            prescale = int(_OSC_HZ / 4096.0 / frequency + 0.5) - 1     # Adafruit 와 같은 계산
+            prescale = max(3, min(255, prescale))
+            old = self._bus.read_byte_data(address, _MODE1)
+            self._bus.write_byte_data(address, _MODE1, (old & 0x7F) | _SLEEP)
+            self._bus.write_byte_data(address, _PRESCALE, prescale)
+            self._bus.write_byte_data(address, _MODE1, old)
+            time.sleep(0.005)
+            self._bus.write_byte_data(address, _MODE1, old | _RESTART | _AUTO_INC)
+        except Exception:
+            self._bus.close()
+            raise
+        self.frequency = _OSC_HZ / 4096.0 / (prescale + 1)
+        self._period_us = 1_000_000.0 / self.frequency
+        log.info("PCA9685 @0x%02X, %.1f Hz (smbus 직접 제어)", address, self.frequency)
+
+    def write_pulse(self, channel: int, pulse_us: float | None) -> None:
+        if pulse_us is None:
+            regs = [0, 0, 0, 0x10]                        # FULL OFF
+        else:
+            off = int(round(pulse_us / self._period_us * 4096))
+            off = max(0, min(4095, off))
+            regs = [0, 0, off & 0xFF, off >> 8]
+        with self._lock:
+            self._bus.write_i2c_block_data(self._addr, _LED0_ON_L + 4 * channel, regs)
+
+    def close(self) -> None:
+        with self._lock:
+            try:
+                self._bus.write_byte_data(self._addr, _MODE1, 0x00)   # Adafruit deinit 과 동일
+            except OSError:
+                pass
+            finally:
+                self._bus.close()
+
+
+class AdafruitPCA9685Backend:
+    """(예비) Adafruit 라이브러리 사용. RASPCLAWS_PCA_DRIVER=adafruit 일 때만."""
+
     name = "pca9685"
     connected = True
     generation = 0
@@ -180,17 +247,19 @@ class MockBackend:
         self.outputs.clear()
 
 
-def create_backend(kind: str, address: int, frequency: int) -> PWMBackend:
+def create_backend(kind: str, address: int, frequency: int, driver: str = "native") -> PWMBackend:
     """kind: mock | pca9685 | auto
     auto: 라즈베리파이면 PCA9685(연결될 때까지 재시도), 그 외(PC 개발)는 mock.
+    driver: native(smbus 직접, 기본) | adafruit
     """
     kind = kind.lower()
     if kind == "mock":
         return MockBackend()
+    cls = AdafruitPCA9685Backend if driver.lower() == "adafruit" else PCA9685Backend
     if kind == "auto" and not on_raspberry_pi():
         try:
-            return PCA9685Backend(address, frequency)
+            return cls(address, frequency)
         except Exception as exc:
             log.warning("라즈베리파이가 아니고 PCA9685 도 없어 mock 으로 실행합니다: %s", exc)
             return MockBackend()
-    return ReconnectingBackend(lambda: PCA9685Backend(address, frequency))
+    return ReconnectingBackend(lambda: cls(address, frequency))

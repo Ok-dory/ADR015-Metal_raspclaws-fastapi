@@ -25,7 +25,8 @@ log = logging.getLogger(__name__)
 class Robot:
     def __init__(self, settings: Settings) -> None:
         self.settings = settings
-        backend = create_backend(settings.backend, settings.i2c_address, settings.pwm_frequency)
+        backend = create_backend(settings.backend, settings.i2c_address, settings.pwm_frequency,
+                                 settings.pca_driver)
         self.backend = backend
         # 실제 로봇 여부: 서보 드라이버 연결과 무관하게 판단 (드라이버가 안 잡혀도
         # OLED·센서는 따로 동작하고, 드라이버는 연결될 때까지 재시도)

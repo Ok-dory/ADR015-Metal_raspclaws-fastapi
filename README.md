@@ -15,7 +15,7 @@ raspclaws-fastapi/
 └─ raspclaws/
    ├─ config.py               # 설정 (환경변수 RASPCLAWS_* 로 덮어쓰기)
    ├─ robot_layout.py         # ★ 서보 채널·다리 배치·반전·안전 한계
-   ├─ hardware/pwm.py         # PCA9685(0x5F) / Mock 백엔드
+   ├─ hardware/pwm.py         # PCA9685(0x5F, smbus2 직접 제어) / 자동 재연결 / Mock
    ├─ servo/controller.py     # 스무딩·데드밴드·유휴 해제 제어 루프 (전용 스레드)
    ├─ servo/calibration.py    # 영점 저장/불러오기
    ├─ motion/gait.py          # 트라이포드 보행
@@ -153,6 +153,7 @@ PC에서 하드웨어 없이 개발할 때는 `RASPCLAWS_BACKEND=mock python run
 |---|---|
 | 웹 화면은 반응하는데 로봇이 안 움직이고, 빨간 **"서보 드라이버 연결 안 됨"** 경고 | 서보 드라이버(PCA9685, I2C 0x5F)가 응답하지 않음. 배터리 스위치·충전 상태 확인. 연결되면 **자동으로 다시 동작**(3초마다 재시도). 확인: `i2cdetect -y 1` 에 `5f` 가 보여야 함 |
 | OLED 에 `SERVO DRV: NO LINK!` / `CHECK BATTERY SW` | 위와 같음 |
+| 로그에 `Blinka found installed platform dependencies with unsupported versions` | 예전 버전(Adafruit 라이브러리 사용)의 문제. 현재는 서보 드라이버를 smbus2 로 직접 제어하므로 `./update.sh` 또는 재부팅으로 해결 |
 | 크롬에서 `ERR_TOO_MANY_RETRIES` | 크롬 설정 문제 → 삼성 인터넷 사용 또는 크롬 "항상 보안 연결 사용" 끄기 |
 | `run.py` 실행 시 "포트를 이미 사용 중" | 서비스로 이미 실행 중. 브라우저로 바로 접속 |
 

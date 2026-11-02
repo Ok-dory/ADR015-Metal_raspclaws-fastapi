@@ -159,7 +159,7 @@ PC에서 하드웨어 없이 개발할 때는 `RASPCLAWS_BACKEND=mock python run
 | POST | `/api/motion/{forward\|backward\|left\|right\|stop}` | 보행 |
 | PUT | `/api/motion/drive` | `{"vx": -1~1, "wz": -1~1}` 아날로그 주행 (wz + = 좌회전) |
 | POST | `/api/servos/{ch}/exercise` | 한 채널만 보행 속도로 5초 왕복 (걸을 때만 이상한 서보 진단) |
-| PUT | `/api/motion/speed` | `{"mode": "fast"\|"slow"}` |
+| PUT | `/api/motion/speed` | `{"mode": "slow"\|"normal"\|"fast"}` |
 | PUT | `/api/head` | `{"pan": .., "tilt": ..}` |
 | GET | `/api/status` | 보행 상태 + CPU/RAM |
 | POST | `/api/command` | 기존 문자열 명령 실행 |

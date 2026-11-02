@@ -9,7 +9,7 @@ import logging
 import threading
 import time
 
-from . import system_info
+from . import system_info, version
 from .config import Settings
 from .hardware import create_backend
 from .motion import GaitEngine, HeadController, SnagGuard, SonarController
@@ -41,6 +41,8 @@ class Robot:
                                     width=settings.camera_width, height=settings.camera_height)
         self.imu = ImuSensor(enabled=settings.imu and hw, mock_motion=self.gait.motion_info)
         self.snag = SnagGuard(self.gait, self.imu, settings.data_dir)
+        self.version = version.snapshot(settings.data_dir)   # 시작 시 한 번 읽음
+        self._started = time.monotonic()
         self.oled = OledDisplay(self._oled_lines, enabled=settings.oled and hw)
 
     # ------------------------------------------------------------ 수명주기
@@ -85,10 +87,18 @@ class Robot:
         return [
             f"RaspClaws  {time.strftime('%H:%M')}",
             f"IP {local_ip()}",
-            f"WEB :{self.settings.port}  OK",
+            self._oled_status_line(),
             snag_line or f"MOVE {move} / {'FAST' if self.gait.fast else 'SLOW'}",
             f"{bat_txt}  {temp:.0f}C" if temp is not None else bat_txt,
         ]
+
+    def _oled_status_line(self) -> str:
+        """부팅 후 60초 동안은 업데이트 결과, 그 뒤로는 서버 상태."""
+        commit = self.version.get("commit") or "-"
+        upd = self.version.get("update")
+        if upd and time.monotonic() - self._started < 60:
+            return f"{upd['oled']} {commit}"
+        return f"WEB :{self.settings.port} v{commit}"
 
     def status(self) -> dict:
         return {
@@ -102,6 +112,7 @@ class Robot:
             **self.status(),
             **system_info.snapshot(),
             "drive": self.gait.snapshot(),
+            "version": self.version,
             "snag": self.snag.snapshot(),
             "battery": self.battery.snapshot(),
             "head": self.head.snapshot(),

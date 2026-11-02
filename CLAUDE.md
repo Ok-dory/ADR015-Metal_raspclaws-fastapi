@@ -5,7 +5,9 @@ Adeept RaspClaws-Metal 헥사포드(Raspberry Pi 5 + Robot HAT V3.3) 커스텀 �
 
 ## 작업 흐름
 1. Claude 가 이 저장소에서 수정 → mock 모드로 검증 → `main` 에 커밋·푸시
-2. 라즈베리파이(`~/raspclaws-fastapi`, 사용자 `okdory`, IP 192.168.1.48)에서 `./update.sh` 로 반영
+2. 라즈베리파이(`~/raspclaws-fastapi`, 사용자 `okdory`, IP 192.168.1.48)는 부팅 시 `scripts/boot-update.sh` 로 자동 반영,
+   켜져 있을 때는 `./update.sh` (서버는 systemd 서비스 `raspclaws` 로 동작 — `run.py` 를 따로 실행하라고 안내하지 말 것)
+   - 시작 전 점검(compileall + `import raspclaws.app`)에 실패하면 자동 롤백되므로, import 시점에 하드웨어를 건드리지 말 것
 3. 로봇에서 직접 코드를 고치지 않는 것이 원칙. 작업 시작 전 `git pull` 로 최신 상태 확인
 
 ## 검증 방법 (하드웨어 없이)

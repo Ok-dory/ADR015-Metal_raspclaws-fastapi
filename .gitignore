@@ -5,3 +5,5 @@ data/servos_init.json
 *.zip
 data/snag_config.json
 data/imu_logs/
+data/update_status.json
+data/no-auto-update

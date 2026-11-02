@@ -1,8 +1,7 @@
-#!/usr/bin/env bash
-# GitHub 에서 최신 코드를 받아오고 서버를 재시작합니다.
-#   사용법: cd ~/raspclaws-fastapi && ./update.sh
 set -euo pipefail
+# 전체를 함수로 감싸 둠: git pull 로 이 파일이 바뀌어도 실행 중인 내용에 영향 없음
 cd "$(dirname "$(readlink -f "$0")")"
+main() {
 
 # 이 폴더에서 수동 실행 중인 run.py 가 있는지 (작업 폴더로 판별)
 manual_running() {
@@ -37,6 +36,11 @@ git pull --ff-only
 new=$(git rev-parse HEAD)
 new_req=$(git rev-parse HEAD:requirements.txt 2>/dev/null || echo none)
 
+mkdir -p data
+printf '{"result": "%s", "message": "%s", "from": "%s", "to": "%s", "time": "%s"}\n' \
+  "manual" "update.sh 로 수동 업데이트" "$(git rev-parse --short "$old")" "$(git rev-parse --short "$new")" \
+  "$(date -Iseconds)" > data/update_status.json
+
 if [ "$old" = "$new" ]; then
   say "이미 최신 버전입니다 ($(git log -1 --format='%h %s'))"
 else
@@ -55,7 +59,14 @@ if [ "$old_req" != "$new_req" ]; then
   .venv/bin/pip install -r requirements.txt
 fi
 
-# 3) 서버 재시작
+# 3) 서비스 설정이 예전 버전이면(부팅 시 자동 업데이트 없음) 새로 등록
+UNIT=/etc/systemd/system/raspclaws.service
+if [ -f "$UNIT" ] && ! grep -q boot-update "$UNIT"; then
+  say "서비스 설정 갱신 (부팅 시 자동 업데이트 추가)..."
+  ./scripts/install-service.sh
+fi
+
+# 4) 서버 재시작
 if systemctl is-active --quiet raspclaws 2>/dev/null; then
   say "서버 재시작 중..."
   sudo systemctl restart raspclaws
@@ -74,3 +85,7 @@ else
   say "업데이트 완료. 서버 실행:  .venv/bin/python run.py"
   echo "   (부팅 시 자동 실행: ./scripts/install-service.sh)"
 fi
+}
+
+main "$@"
+exit $?

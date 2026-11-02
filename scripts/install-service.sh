@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # 부팅 시 서버가 자동 실행되도록 systemd 서비스를 등록합니다.
+# (서버 시작 전 scripts/boot-update.sh 로 GitHub 최신 코드를 확인)
 # 현재 사용자와 폴더 위치를 자동으로 반영하므로 파일을 직접 고칠 필요가 없습니다.
 #   사용법: ./scripts/install-service.sh          (등록 + 시작)
 #           ./scripts/install-service.sh remove   (해제)
@@ -36,7 +37,10 @@ Wants=network-online.target
 [Service]
 User=$USER_NAME
 WorkingDirectory=$DIR
+# 부팅 시 GitHub 최신 코드 확인 (실패해도 서버는 기존 버전으로 시작, '-' = 실패 무시)
+ExecStartPre=-$DIR/scripts/boot-update.sh
 ExecStart=$DIR/.venv/bin/python run.py
+TimeoutStartSec=300
 Restart=on-failure
 RestartSec=3
 
@@ -47,4 +51,5 @@ EOF
 sudo systemctl daemon-reload
 sudo systemctl enable --now raspclaws
 echo "등록 완료 (사용자: $USER_NAME, 경로: $DIR)"
+echo "부팅할 때마다 GitHub 최신 버전을 확인합니다. 끄려면: touch $DIR/data/no-auto-update"
 echo "상태: systemctl status raspclaws   로그: journalctl -u raspclaws -f"

@@ -293,6 +293,12 @@
     $("cpuUsage").textContent = fmt(s.cpu_usage, " %", 0);
     $("ramUsage").textContent = fmt(s.ram_usage, " %", 0);
     $("backend").textContent = s.backend;
+    const v = s.version || {};
+    $("verTxt").textContent = v.commit ? `${v.commit} · ${v.subject || ""}` : "알 수 없음";
+    $("verTxt").title = v.date || "";
+    const u = v.update;
+    $("verUpd").textContent = u ? `${u.text}${u.result === "updated" || u.result === "manual" ? ` (${u.from} → ${u.to})` : ""}` : "";
+    $("verUpd").style.color = u && (u.result === "rolledback" || u.result === "skipped") ? "var(--warn)" : "";
     const oled = s.oled || {};
     $("oledTxt").textContent = (oled.lines || []).join("\n") + (oled.available ? "" : "\n(OLED 미연결 · 미리보기)");
 

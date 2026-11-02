@@ -52,6 +52,7 @@ class ServoController:
             if ch in self._states:
                 self._states[ch].center = center
         self._thread: threading.Thread | None = None
+        self._backend_gen = getattr(backend, "generation", 0)
         self._running = threading.Event()
 
     # ------------------------------------------------------------------ 수명주기
@@ -230,6 +231,12 @@ class ServoController:
     def _tick(self, now: float, dt: float) -> None:
         deadband = self.settings.write_deadband_us
         with self._lock:
+            # 드라이버가 (재)연결되면 모든 서보의 현재 위치를 다시 보냄
+            gen = getattr(self.backend, "generation", 0)
+            if gen != self._backend_gen:
+                self._backend_gen = gen
+                for st in self._states.values():
+                    st.last_pulse = None
             for ch, st in self._states.items():
                 if not st.engaged:
                     continue

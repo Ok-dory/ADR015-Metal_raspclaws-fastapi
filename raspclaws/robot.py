@@ -26,7 +26,9 @@ class Robot:
     def __init__(self, settings: Settings) -> None:
         self.settings = settings
         backend = create_backend(settings.backend, settings.i2c_address, settings.pwm_frequency)
-        self.backend_name = backend.name
+        self.backend = backend
+        # 실제 로봇 여부: 서보 드라이버 연결과 무관하게 판단 (드라이버가 안 잡혀도
+        # OLED·센서는 따로 동작하고, 드라이버는 연결될 때까지 재시도)
         hw = backend.name != "mock"
 
         self.servos = ServoController(backend, SERVOS, settings,
@@ -67,7 +69,7 @@ class Robot:
             self.sonar.point(90.0)
             # 서기 자세가 안정된 뒤 그 자세를 자세 센서의 기준으로 저장
             threading.Timer(2.0, self.imu.set_reference).start()
-        log.info("Robot started (backend=%s)", self.backend_name)
+        log.info("Robot started (backend=%s)", self.backend.name)
 
     def shutdown(self) -> None:
         self.oled.stop(farewell=["RaspClaws", "", "SERVER STOPPED"])
@@ -102,7 +104,9 @@ class Robot:
         ]
 
     def _oled_status_line(self) -> str:
-        """부팅 후 60초 동안은 업데이트 결과, 그 뒤로는 서버 상태."""
+        """서보 드라이버 미연결 경고 > 부팅 후 60초 업데이트 결과 > 서버 상태."""
+        if not self.backend.connected:
+            return "SERVO DRV: NO LINK!" if int(time.monotonic()) % 2 else "CHECK BATTERY SW"
         commit = self.version.get("commit") or "-"
         upd = self.version.get("update")
         if upd and time.monotonic() - self._started < 60:
@@ -111,7 +115,9 @@ class Robot:
 
     def status(self) -> dict:
         return {
-            "backend": self.backend_name,
+            "backend": self.backend.name,
+            "servo_driver": {"connected": self.backend.connected,
+                             "error": getattr(self.backend, "error", None)},
             "moving": self.gait.direction,
             "speed_mode": self.gait.speed_mode,
         }

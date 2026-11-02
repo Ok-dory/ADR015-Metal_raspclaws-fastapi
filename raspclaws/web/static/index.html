@@ -22,6 +22,10 @@
   </div>
 </header>
 
+<div class="drv-banner" id="drvBanner" hidden>
+  <b>⚠ 서보 드라이버에 연결되지 않았습니다</b> — 로봇이 움직이지 않습니다.
+  배터리 스위치와 충전 상태를 확인해 주세요. 연결되면 자동으로 다시 동작합니다.
+</div>
 <main>
   <!-- ================= 조종석: 카메라 + 조이스틱 ================= -->
   <section id="cockpit">
@@ -42,6 +46,7 @@
         <div class="hud tr">PAN <b id="hudPan">--</b>° · TILT <b id="hudTilt">--</b>°</div>
         <div class="hud bl" id="hudDist">-- cm</div>
         <div class="hud tc snag-alert" id="hudSnag" hidden></div>
+        <div class="hud mid drv-hud" id="hudDrv" hidden>⚠ 서보 드라이버<br>연결 안 됨<br><small>배터리 스위치·충전 상태 확인</small></div>
         <div class="hud br hint">화면을 탭하면 그 방향으로 카메라가 향합니다</div>
       </div>
       <div class="toolbar">

@@ -8,6 +8,7 @@
   const buzz = (ms = 8) => { try { navigator.vibrate && navigator.vibrate(ms); } catch {} };
 
   let ws = null;
+  let lastDrv = null;
   let state = null;
   let selected = 0;
 
@@ -299,7 +300,17 @@
     $("cpuTemp").textContent = fmt(s.cpu_temp, " °C", 1);
     $("cpuUsage").textContent = fmt(s.cpu_usage, " %", 0);
     $("ramUsage").textContent = fmt(s.ram_usage, " %", 0);
-    $("backend").textContent = s.backend;
+    const drv = s.servo_driver || { connected: true };
+    $("backend").textContent = drv.connected ? s.backend : "연결 안 됨";
+    $("backend").style.color = drv.connected ? "" : "var(--danger)";
+    $("backend").title = drv.error || "";
+    $("drvBanner").hidden = drv.connected;
+    $("hudDrv").hidden = drv.connected;
+    if (lastDrv !== null && lastDrv !== drv.connected) {
+      toast(drv.connected ? "서보 드라이버가 다시 연결되었습니다" : "서보 드라이버 연결이 끊겼습니다");
+      buzz(drv.connected ? 30 : [80, 60, 80]);
+    }
+    lastDrv = drv.connected;
     const v = s.version || {};
     $("verTxt").textContent = v.commit ? `${v.commit} · ${v.subject || ""}` : "알 수 없음";
     $("verTxt").title = v.date || "";

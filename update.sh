@@ -61,7 +61,8 @@ if systemctl is-active --quiet raspclaws 2>/dev/null; then
   sudo systemctl restart raspclaws
   sleep 2
   if systemctl is-active --quiet raspclaws; then
-    say "완료! http://$(hostname -I | awk '{print $1}'):5000"
+    say "완료! 서버가 서비스로 실행 중입니다 → http://$(hostname -I | awk '{print $1}'):5000"
+    echo "   (run.py 를 따로 실행할 필요 없습니다 · 로그: journalctl -u raspclaws -f)"
   else
     warn "서버가 시작되지 않았습니다. 로그: journalctl -u raspclaws -n 50"
     exit 1
